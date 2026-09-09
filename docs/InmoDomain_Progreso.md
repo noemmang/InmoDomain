@@ -4,8 +4,8 @@
 
 ## Estado actual
 
-**Fase en curso:** Fase 1 — Entorno y repositorio (SDK, Git y Visual Studio listos; falta estructura de carpetas y primer commit)
-**Última fase completada:** Fase 0 — Fundamentos conceptuales ✅
+**Fase en curso:** Fase 2 — Diseño de datos y contratos de API (pendiente de iniciar)
+**Última fase completada:** Fase 1 — Entorno y repositorio ✅
 
 ## Historial
 
@@ -22,12 +22,20 @@
 - [x] Decisión confirmada: Neon no soporta SQL Server — se usa PostgreSQL
 - [x] Creados los documentos maestros `InmoDomain_Contexto_y_Reglas.md` y `InmoDomain_Progreso.md`
 
-### Fase 1 — Entorno y repositorio 🔶 en curso
+### Fase 1 — Entorno y repositorio ✅ completada
 - [x] Instalar/confirmar .NET 10 SDK — SDK 10.0.401 instalado y verificado (`dotnet --list-sdks`)
 - [x] Confirmar Visual Studio Community instalado y configurado — Visual Studio Community 2026, workload "Desarrollo de ASP.NET y web", configuración de entorno "Desarrollo web"
 - [x] Git confirmado instalado — versión 2.47.1.windows.1 (ya estaba presente)
-- [ ] Crear estructura de carpetas del monorepo
-- [ ] Primer commit en Git
+- [x] Crear estructura de carpetas del monorepo — creada en `C:\Proyectos\InmoDomain` (backend/ con 6 servicios + Gateway, frontend/, docs/ con los dos documentos maestros, .github/workflows/, .gitignore y README.md vacíos). Nota: la carpeta se creó inicialmente como `src/` y se renombró a `backend/` para mayor claridad.
+- [x] Escribir contenido de `.gitignore` — reglas para .NET, secretos/config local, frontend (Node/React) y sistema operativo. Regla de estilo confirmada: sin comentarios explicativos dirigidos al usuario dentro de archivos del repositorio (extiende la regla de gobernanza nº4 a todo el repo, no solo código C#).
+- [x] Escribir contenido inicial de `README.md`
+- [x] Primer commit en Git — repositorio inicializado, commit "Estructura inicial del monorepo", conectado y subido a `https://github.com/noemmang/InmoDomain.git` (rama `main`)
+
+### Fase 2 — Diseño de datos y contratos de API ⬜ pendiente
+- [ ] Definir qué datos exactos se obtienen de INE (tabla 6150) y MIVAU (CSV trimestral)
+- [ ] Diseñar tablas por base de datos lógica (una por servicio)
+- [ ] Definir endpoints por servicio
+- [ ] Definir eventos que viajarán por Azure Service Bus
 
 ## Decisiones pendientes / abiertas
 

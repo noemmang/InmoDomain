@@ -4,7 +4,7 @@
 
 ## 1. Objetivo del proyecto
 
-InmoDomain es una plataforma de análisis del mercado inmobiliario español, construida como proyecto de portafolio. Consume datos oficiales del INE (API JSON, tabla 6150) y del MIVAU (CSV trimestral), y permite explorar el mercado por provincia, comparar provincias, generar un "Property Score" propio, guardar favoritos y crear alertas.
+InmoDomain es una plataforma de análisis del mercado inmobiliario español, construida como proyecto de portafolio. Consume datos oficiales del INE (API JSON, tabla 6150) y del MIVAU (ficheros `.XLS` trimestrales), y permite explorar el mercado por provincia, comparar provincias, generar un "Property Score" propio, guardar favoritos y crear alertas.
 
 El objetivo de aprendizaje no es principalmente escribir código a mano: es entender **arquitectura, conceptos y flujos de sistemas** con la profundidad suficiente para poder explicarlos y dirigir con criterio a una IA/agente que sí escriba el código.
 
@@ -19,6 +19,7 @@ El objetivo de aprendizaje no es principalmente escribir código a mano: es ente
 - **Nunca se añade código de prueba, datos de relleno (placeholders) ni implementaciones simuladas para "hacer que algo funcione" antes de tiempo, salvo que el usuario lo pida explícitamente.** Si una pieza no puede completarse todavía porque depende de una fase futura (por ejemplo, la validación de JWT), se deja explícita esa carencia (p. ej. con una excepción clara) en vez de esconderla con un valor inventado — coherente con la regla de gobernanza nº2 ("los errores se resuelven en su causa raíz, nunca se esconden").
 - Terminal: **PowerShell**. IDE: **Visual Studio Community**.
 - Ante una decisión de diseño con varios caminos válidos, se explican las opciones y el porqué de cada una antes de decidir. Si hay dudas sobre si un dato o una fuente externa existe realmente a cierto nivel de detalle, o sobre si algo tiene coste real en Azure, **se verifica (búsqueda web) antes de decidir o descartar algo por sentado**.
+- **Si falta contexto sobre algo ya existente en la app (código, estructura de carpetas, contenido de un fichero concreto) necesario para continuar con precisión, se pide al usuario el fichero o ficheros concretos antes de hacer nada**, en vez de asumir su contenido o inventarlo a partir de lo ya documentado.
 
 ## 3. Cómo se actualiza este documento
 
@@ -63,19 +64,8 @@ Este archivo **no se reescribe entero cada vez**. Solo se modifica cuando se tom
 - Motivo: el código INE es una clave natural ya única y estable, es el identificador con el que llegan los datos oficiales desde las fuentes externas (INE/MIVAU) y es legible en una URL. Sustituirlo por un Guid obligaría a traducir constantemente entre Guid y código INE en cualquier llamada entre servicios que involucre a Market Data, sin resolver ningún problema real. El Guid de `provincias` queda como identificador interno de Property, sin propagarse al resto del sistema.
 
 **Comunicación entre servicios**
-- **Síncrona (HTTP/REST)**:
-  - Cliente → Gateway → Analytics → Market Data (ficha de provincia, con datos ya calculados de `analytics_db` combinados con datos crudos de Market Data para gráficos).
-  - Cliente → Gateway → Alerts → Property (al crear/editar una alerta, valida que `codigo_provincia` existe realmente antes de guardar).
-- **Asíncrona (eventos)**: **Azure Service Bus** (topics/subscriptions, capa gratuita 12 meses / 13M operaciones/mes).
-- **Jobs periódicos** vía **Azure Container Apps Jobs**: `market-data-import-job` (diario, escribe directamente en `market_data_db`) y `alert-evaluation-job` (cada 6h).
-
-**Criterio general de validación entre servicios**
-- Se valida un dato contra otro servicio (llamada síncrona) cuando la **integridad del dato** lo exige — es decir, cuando no se quiere permitir que exista un registro que apunte a algo inexistente —, incluso si el riesgo de seguridad de no validar es nulo. No se trata solo de minimizar dependencias entre microservicios a toda costa: la corrección del dato tiene prioridad. Ejemplo aplicado: Alerts valida `codigo_provincia` contra Property al crear/editar una alerta.
-
-**Autenticación y autorización**
-- Identity emite JWT con claims mínimos: `sub` (Guid del usuario), `email`, `iat`, `exp` — sin roles.
-- **Cada microservicio público valida el JWT de forma independiente** (zero trust), no solo el Gateway — los JWT son *stateless*, validar la firma no cuesta ninguna llamada a Identity, y no hay service mesh que garantice la confianza de red entre servicios.
-- **Market Data** (único servicio interno) no usa JWT de usuario — no le importa qué usuario pregunta. Se protege con **ingress interno de Container Apps** (inalcanzable desde fuera del entorno, gratuito) + **API key compartida** entre servicios como capa adicional.
+- **Síncrona (HTTP/REST)**: usada cuando un servicio necesita un dato de otro en el momento (p. ej. Alerts validando `codigo_provincia` contra Property al crear/editar, o Analytics combinando datos crudos de Market Data). Se valida contra otro servicio cuando lo exige la integridad del dato, no solo cuando hay riesgo de seguridad.
+- **Asíncrona (eventos, Service Bus)**: usada para efectos secundarios que no bloquean la respuesta al usuario (notificaciones, recálculos tras una importación). Ver registro de eventos en `InmoDomain_Progreso.md`.
 - **Excepción documentada — JWT opcional**: el endpoint de ficha de provincia en Analytics (`GET /api/v1/provinces/{codigoProvincia}/analytics`) no exige JWT. Si no hay token, o es inválido, responde igual con los datos base (nunca 401 por esa causa); si el token es válido, añade campos personalizados (p. ej. `esFavorita`). Es la única ruta pública del proyecto con este comportamiento — se documenta explícitamente para no confundirla con un descuido de seguridad frente al resto de rutas, que son protegidas o públicas de forma binaria.
 - **Nota de implementación pendiente**: hasta que Identity y la validación de JWT existan (Fase 8), cualquier Controller que necesite el `usuario_id` del token (p. ej. `FavoritesController.GetUserId()`) lo deja explícito con una excepción `NotImplementedException`, nunca con un valor simulado.
 
@@ -86,6 +76,14 @@ Este archivo **no se reescribe entero cada vez**. Solo se modifica cuando se tom
 
 **Caché**
 - Tabla de caché dentro de PostgreSQL (`market_data_db.datos_cache`), uso interno de Market Data. No se usa Redis gestionado. Redis queda como posible v2.
+
+**Market Data — integración con fuentes externas**
+- **INE**: API JSON del servicio Tempus3, pública, **sin autenticación ni API key**. Endpoint base `https://servicios.ine.es/wstempus/js/ES/DATOS_TABLA/{idTabla}` (tabla **6150** — Compraventa de viviendas según régimen y estado). Filtrado vía parámetro `tv=idVariable:idValor` (requiere resolver antes los IDs numéricos de provincia/régimen/estado contra los metadatos de la tabla). El parámetro `nult=N` permite pedir solo los últimos N periodos, evitando releer la serie completa en cada ejecución del job.
+- **MIVAU — corrige el diseño inicial de la Fase 2**: la fuente real **no es un CSV**, sino ficheros **`.XLS`** (formato Excel binario antiguo, BIFF), uno por serie, con **URL numérica estable** que no cambia cada trimestre (p. ej. vivienda libre ≤5 años y >5 años como series independientes). Cada fichero tiene 4 hojas (una por bloque de años) que hay que leer todas para la serie completa; cada hoja es una matriz ancha de publicación (territorios anidados en filas, trimestres agrupados por año en columnas), no una tabla "tidy". No incluye código INE, solo el nombre de la provincia en texto libre con formatos variables, y una fila agregada `'Ceuta y Melilla'` además de las filas individuales, que se descarta para no duplicar el dato.
+- **Librería de lectura del `.XLS`: `ExcelDataReader`** (MIT, solo lectura, streaming fila a fila, ligera), descartando `NPOI` (Apache 2.0, lectura y escritura, más pesada por cubrir todo el modelo de objetos de Excel) porque el servicio solo necesita leer, nunca escribir el fichero de origen. Requiere registrar `System.Text.Encoding.RegisterProvider(CodePagesEncodingProvider.Instance)` una vez al arrancar, ya que los `.xls` antiguos usan páginas de código no registradas por defecto en .NET Core.
+- **Tratamiento de huecos de dato (`'n.r'`)**: el literal `'n.r'` (no representativo) se trata como ausencia de dato para esa provincia+periodo — no se inserta fila ni se lanza excepción.
+- **Estrategia de reimportación de MIVAU**: se relee el fichero completo y se hace upsert en cada ejecución del job (volumen total ≈6.700 filas, trivial), en vez de intentar traer solo el trimestre nuevo, ya que el origen no ofrece un mecanismo equivalente al `nult` del INE para pedir "solo lo último".
+- **Mapeo nombre de provincia (MIVAU) → código INE**: mediante un **diccionario estático en el código** (52 entradas, formato estable), no por normalización de texto vía heurística.
 
 **Secretos en desarrollo local**
 - Las cadenas de conexión y demás secretos de cada servicio se guardan con **User Secrets** de .NET (`dotnet user-secrets`), nunca en `appsettings.json`. En producción (Azure Container Apps) se usan variables de entorno/secretos de Container Apps — el mecanismo cambia entre entornos, la regla de "nunca en el código fuente" no.
@@ -116,8 +114,8 @@ Este archivo **no se reescribe entero cada vez**. Solo se modifica cuando se tom
 - [x] **Fase 0 — Fundamentos conceptuales**
 - [x] **Fase 1 — Entorno y repositorio**
 - [x] **Fase 2 — Diseño de datos y contratos de API**
-- [ ] **Fase 3 — Primer microservicio (Property Service)**
-- [ ] **Fase 4 — PostgreSQL + EF Core**
+- [x] **Fase 3 — Primer microservicio (Property Service)**
+- [x] **Fase 4 — PostgreSQL + EF Core**
 - [ ] **Fase 5 — Market Data Service**
 - [ ] **Fase 6 — Resiliencia**
 - [ ] **Fase 7 — Analytics Service**
@@ -141,3 +139,5 @@ Este archivo **no se reescribe entero cada vez**. Solo se modifica cuando se tom
 - **v6** — Iniciada Fase 3 (Property Service). Fijada la arquitectura interna en capas (Controller → Service → Repository, DTOs en el límite HTTP, sin clases base compartidas) como plantilla para los 6 microservicios. Decidido que toda PK generada por el sistema usa Guid, salvo claves naturales externas ya únicas y estables: el código INE de provincia se mantiene como referencia entre servicios, mientras que `provincias.Id (Guid)` queda como identificador interno de Property sin propagarse. Añadida la regla de comunicación: los comandos de terminal se entregan como comando puro, no en explicación.
 - **v7** — Escrito el código completo de Property Service (Models, Dtos, interfaces de Repository, Services, Controllers), pendiente solo de la implementación real de los Repositories (Fase 4) y de `Program.cs`/`appsettings.json`/`Property.csproj`. Introducido el tipo `Result`/`Result<T>` (en `Common/`) como mecanismo estándar para que los Services comuniquen fallos de negocio esperados, sin usar excepciones para ese fin. Añadida la regla de comunicación: nunca se añade código de prueba, datos de relleno ni implementaciones simuladas sin que el usuario lo pida explícitamente; una pieza incompleta por depender de una fase futura se deja explícita (p. ej. con una excepción), nunca simulada.
 - **v8** — Iniciada Fase 4 (PostgreSQL + EF Core). Corregido el dato de cuota gratuita de Neon (100 CU-hours/proyecto/mes, no 50 — la cifra subió tras la adquisición por Databricks). Decidida la organización en Neon: un único proyecto (`InmoDomain`) con una base de datos lógica por servicio dentro, en vez de un proyecto Neon separado por servicio. Añadido el patrón de doble cadena de conexión pooled/direct (pooled para la app, directa solo para migraciones). Fijados como reglas de comunicación: los secretos de desarrollo local se guardan con User Secrets de .NET, y `dotnet-ef` se instala como herramienta local con versión fijada en el repositorio.
+- **v9** — Cerrada la Fase 4 y marcadas Fase 3 y Fase 4 como completadas en la hoja de ruta. Iniciada la Fase 5 (Market Data Service). Corregido el diseño de la Fase 2 respecto a MIVAU: la fuente real no es un CSV, sino ficheros `.XLS` (BIFF) con URL numérica estable, uno por serie, de estructura ancha no tidy y sin código INE (mapeo por diccionario estático). Fijada la librería de lectura del `.XLS`: `ExcelDataReader`, descartando `NPOI` por innecesariamente más pesada para un caso de solo lectura. Fijado el tratamiento del literal `'n.r'` como ausencia de dato (sin fila, sin excepción) y la estrategia de reimportación de MIVAU (relectura completa + upsert en cada ejecución, por no existir un equivalente al `nult` del INE).
+- **v10** — Añadida la regla de comunicación: si falta contexto sobre algo ya existente en la app (código, estructura de carpetas, contenido de un fichero concreto) necesario para continuar con precisión, se pide al usuario el fichero o ficheros concretos antes de hacer nada, en vez de asumir o inventar su contenido.

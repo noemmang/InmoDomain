@@ -4,7 +4,7 @@
 
 ## Estado actual
 
-**Fase en curso:** Fase 5 — Market Data Service, Bloque 1 (integración real con INE y MIVAU) en curso
+**Fase en curso:** Fase 5 — Market Data Service. Bloque 1 (integración real con INE y MIVAU) ✅ completado. Bloque 2 (arquitectura interna) parcialmente completado: la capa de lectura (`MarketData.Data` + `MarketData.Api`) ya está escrita; pendiente cerrar la migración de EF Core de `market_data_db` y diseñar el contenido real de `MarketData.ImportJob` (Bloque 3).
 **Última fase completada:** Fase 4 — PostgreSQL + EF Core (Property Service) ✅ — con ella se cierra también la Fase 3
 
 ## Historial
@@ -113,7 +113,7 @@ Plan de la fase, por bloques: (1) paquetes NuGet y conexión a Neon, (2) `DbCont
   - [x] Escrito `Property.csproj` final — añadido `Swashbuckle.AspNetCore` (versión 10.2.3, verificada en NuGet) a los paquetes ya existentes.
 
 ### Fase 5 — Market Data Service 🔶 en curso
-- [x] **Bloque 1 — Integración real con INE y MIVAU** (en curso)
+- [x] **Bloque 1 — Integración real con INE y MIVAU** ✅ completado
   - [x] **INE verificado** — Servicio API JSON (Tempus3), público, **sin autenticación ni API key**. Endpoint base `https://servicios.ine.es/wstempus/js/ES/DATOS_TABLA/{idTabla}`. Confirmado que la tabla **6150** es *"Compraventa de viviendas según régimen y estado"*, desglosada por provincia — coincide con el diseño ya cerrado. Filtrado vía parámetro `tv=idVariable:idValor` (requiere resolver antes los IDs numéricos de provincia/régimen/estado contra los metadatos de la tabla). `nult=N` permite pedir solo los últimos N periodos, útil para no releer la serie completa en cada ejecución del job.
   - [x] **MIVAU verificado — discrepancia real con lo asumido en la Fase 2**: no es un CSV. El punto de descarga real es un fichero **`.XLS`** (formato Excel binario antiguo, BIFF), uno por serie, con **URL numérica estable** (no cambia cada trimestre): `.../BoletinOnline2/sedal/35101500.XLS` (vivienda libre ≤5 años) y `.../35102000.XLS` (vivienda libre >5 años). Hosting bajo la infraestructura web heredada de `transportes.gob.es`/`apps.fomento.gob.es`, aunque el dato sigue siendo del Ministerio de Vivienda y Agenda Urbana.
   - [x] **Ficheros `.XLS` descargados y analizados con Python (`xlrd`)** para confirmar su estructura real antes de diseñar el parser:
@@ -129,9 +129,20 @@ Plan de la fase, por bloques: (1) paquetes NuGet y conexión a Neon, (2) `DbCont
     - `'n.r'` se trata como ausencia de dato para esa provincia+periodo: no se inserta fila, no se lanza excepción.
     - Se **relee el fichero completo y se hace upsert en cada ejecución** del job (volumen total ≈6.700 filas, trivial), en vez de intentar traer solo el trimestre nuevo — no hay mecanismo del origen para pedir "solo lo último" como sí ofrece `nult` en el INE.
   - [x] **Librería .NET para leer el `.xls` decidida: `ExcelDataReader`** (MIT, solo lectura, streaming fila a fila, ligera) frente a `NPOI` (Apache 2.0, lectura y escritura, más pesada por cubrir todo el modelo de objetos de Excel) — el servicio solo necesita leer, nunca escribir el fichero de origen. Nota de implementación pendiente para cuando se escriba el código: `ExcelDataReader` requiere registrar `System.Text.Encoding.RegisterProvider(CodePagesEncodingProvider.Instance)` una vez al arrancar, ya que los `.xls` antiguos usan páginas de código no registradas por defecto en .NET Core.
-  - [ ] Resolver los IDs numéricos de variable/valor del INE necesarios para filtrar la tabla 6150 por provincia, régimen y estado.
-  - [ ] Diseñar el diccionario estático de mapeo nombre MIVAU → código INE (las 52 entradas).
-- [ ] **Bloque 2** — Arquitectura interna de Market Data: dónde vive el parser de cada fuente, `DbContext` de `market_data_db`, servicio(s) de importación, y cómo encaja todo con `market-data-import-job` (Azure Container Apps Jobs, diario).
+  - [x] **Resueltos los IDs numéricos de variable/valor del INE** necesarios para filtrar la tabla 6150 por provincia, régimen y estado — implementados en `backend/MarketData/Integrations/Ine/IneMetadataCatalog.cs` (variable provincia = 115, con las 52 provincias; variable régimen = 503, con libre/protegida; variable estado = 345, con nueva/segunda mano), junto con los enums `HousingRegime` y `DwellingStatus` en el mismo namespace.
+  - [x] **Diseñado el diccionario estático de mapeo nombre MIVAU → código INE** (las 52 entradas) — implementado en `backend/MarketData/Integrations/Mivau/MivauProvinceNames.cs`.
+
+- [x] **Bloque 2 — Arquitectura interna de Market Data (capa de lectura)** ✅ completado
+  - [x] Creados los tres proyectos del servicio: `MarketData.Data` (biblioteca con el `DbContext`, las entidades y el `DbContextFactory` de diseño), `MarketData.Api` (API de solo lectura) y `MarketData.ImportJob` (consola, con referencia de proyecto a `MarketData.Data`, sin contenido real todavía — ver Bloque 3).
+  - [x] Escrito `MarketDataDbContext` con mapeo Fluent API completo de las 3 tablas (`compraventas_vivienda`, `valores_tasados`, `datos_cache`), incluidas las restricciones `CHECK` y los índices únicos ya definidos en la Fase 2. Entidades correspondientes en `MarketData.Data/Models/` (`HousingSale`, `AppraisedValue`, `CacheEntry`).
+  - [x] Escrita la API de solo lectura siguiendo el mismo patrón en capas que Property (Controller → Service → Repository, DTOs en el límite HTTP): `PropertySalesController`/`AppraisedValuesController`, sus Services (`IHousingSaleService`/`IAppraisedValueService`) y Repositories (`IHousingSaleRepository`/`IAppraisedValueRepository`), y `ApiKeyMiddleware` (cabecera `X-Internal-Api-Key`, clave esperada en `Security:InternalApiKey`) para el ingress interno + API key ya decidido en la Fase 2. `Program.cs` de `MarketData.Api` ya registra todo en DI y añade Swagger solo en Development, igual que Property.
+  - [ ] **Migración de EF Core de `market_data_db`** — en curso:
+    - [x] Base de datos `market_data_db` creada en Neon, dentro del proyecto `InmoDomain` ya existente.
+    - [ ] Corregir la ubicación de `dotnet-tools.json` — está suelto en la raíz del repositorio (`InmoDomain-main/dotnet-tools.json`) en vez de en `.config/dotnet-tools.json` como fija la decisión de la Fase 4; mientras no se mueva, `dotnet ef` no lo detecta como herramienta local.
+    - [ ] Guardar en User Secrets las dos cadenas de conexión: pooled en `MarketData.Api` (clave `ConnectionStrings:MarketData`) y directa en `MarketData.Data` (clave `ConnectionStrings:MarketDataMigrations`, la que usa `MarketDataDbContextFactory`).
+    - [ ] Generar la migración `InitialCreate` (`--project MarketData.Data --startup-project MarketData.Api`) y aplicarla contra `market_data_db`.
+
+- [ ] **Bloque 3 — Contenido real de `MarketData.ImportJob`** — pendiente de diseñar en detalle: dónde vive el cliente HTTP del INE (Tempus3) y el parser del `.XLS` de MIVAU (`ExcelDataReader`), cómo se orquesta la ejecución diaria, y cómo se hace el upsert contra `market_data_db` usando `MarketDataDbContext` directamente (sin pasar por `MarketData.Api`, según lo ya decidido en la Fase 2).
 - [ ] Resto de bloques de la fase — pendientes de planificar en detalle al llegar a ellos.
 
 ## Decisiones pendientes / abiertas

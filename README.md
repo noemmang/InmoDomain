@@ -100,8 +100,6 @@ InmoDomain/
 │
 ├── ⚛️ frontend/
 │
-├── 📚 docs/
-│
 └── ⚙️ .github/
     └── workflows/
 ```

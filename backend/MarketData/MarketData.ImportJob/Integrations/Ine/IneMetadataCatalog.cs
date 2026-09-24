@@ -1,4 +1,4 @@
-namespace MarketData.Integrations.Ine;
+namespace MarketData.ImportJob.Integrations.Ine;
 
 // IDs numericos de variable/valor de la tabla 6150 (Tempus3), verificados contra
 // VARIABLES_TABLA/6150 y VALORES_GRUPOSTABLA/6150/{idGrupo}. Usados para construir
@@ -67,14 +67,21 @@ public static class IneMetadataCatalog
         ["52"] = 52
     };
 
-    // El grupo "Regimen y estado" del INE no es un unico valor combinado: son dos
-    // variables independientes que se combinan en la misma peticion.
+    // NO SE USA en el ImportJob: verificado contra respuestas reales de DATOS_TABLA/6150
+    // que el INE no publica una serie que cruce regimen y estado (son dos desgloses
+    // independientes, no combinables en una misma peticion). Se mantiene documentado
+    // por si en el futuro se retoma el filtro por regimen. Free=284449 confirmado
+    // contra JSON real; Subsidized=284450 NUNCA ha aparecido en una respuesta real,
+    // es un valor asumido por continuidad de rango, sin verificar.
     public static readonly IReadOnlyDictionary<HousingRegime, int> RegimeValueIds = new Dictionary<HousingRegime, int>
     {
         [HousingRegime.Free] = 284449,
         [HousingRegime.Subsidized] = 284450
     };
 
+    // New=16464 confirmado contra JSON real de DATOS_TABLA/6150. SecondHand=16465 es
+    // un valor ASUMIDO (nunca ha aparecido en una respuesta real vista hasta ahora) -
+    // verificar contra una llamada real filtrada por este id antes de asumirlo en produccion.
     // El valor 16463 ("General") existe pero no se usa: agrega nueva + segunda mano.
     public static readonly IReadOnlyDictionary<DwellingStatus, int> DwellingStatusValueIds = new Dictionary<DwellingStatus, int>
     {

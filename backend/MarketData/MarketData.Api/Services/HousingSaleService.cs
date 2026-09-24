@@ -20,7 +20,6 @@ public class HousingSaleService : IHousingSaleService
         {
             ProvinceCode = s.ProvinceCode,
             Period = s.Period,
-            Regime = s.Regime,
             HousingStatus = s.HousingStatus,
             OperationsCount = s.OperationsCount
         }).ToList();

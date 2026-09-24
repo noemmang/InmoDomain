@@ -1,4 +1,4 @@
-namespace MarketData.Integrations.Mivau;
+namespace MarketData.ImportJob.Integrations.Mivau;
 
 // Mapeo del texto de territorio tal como aparece en los .XLS de MIVAU (columna B)
 // al codigo INE de provincia. Verificado identico en las 8 combinaciones fichero x

@@ -22,11 +22,9 @@ public class MarketDataDbContext : DbContext
             entity.Property(e => e.Id).HasColumnName("id");
             entity.Property(e => e.ProvinceCode).HasColumnName("codigo_provincia");
             entity.Property(e => e.Period).HasColumnName("periodo").HasColumnType("date");
-            entity.Property(e => e.Regime).HasColumnName("regimen");
             entity.Property(e => e.HousingStatus).HasColumnName("estado_vivienda");
             entity.Property(e => e.OperationsCount).HasColumnName("numero_operaciones");
-            entity.HasIndex(e => new { e.ProvinceCode, e.Period, e.Regime, e.HousingStatus }).IsUnique();
-            entity.ToTable(t => t.HasCheckConstraint("ck_compraventas_regimen", "regimen IN ('libre', 'protegida')"));
+            entity.HasIndex(e => new { e.ProvinceCode, e.Period, e.HousingStatus }).IsUnique();
             entity.ToTable(t => t.HasCheckConstraint("ck_compraventas_estado_vivienda", "estado_vivienda IN ('nueva', 'segunda_mano')"));
         });
 

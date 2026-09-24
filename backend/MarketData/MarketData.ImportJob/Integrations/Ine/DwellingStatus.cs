@@ -1,4 +1,4 @@
-namespace MarketData.Integrations.Ine;
+namespace MarketData.ImportJob.Integrations.Ine;
 
 public enum DwellingStatus
 {

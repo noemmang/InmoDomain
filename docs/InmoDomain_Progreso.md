@@ -4,8 +4,8 @@
 
 ## Estado actual
 
-**Fase en curso:** Fase 5 — Market Data Service. Bloque 1 (integración real con INE y MIVAU) ✅ completado. Bloque 2 (arquitectura interna + migración de `market_data_db`) ✅ completado: columna `regimen` eliminada, migración `InitialCreate` generada y aplicada contra Neon. Bloque 3 (`MarketData.ImportJob`) ✅ completado y verificado con datos reales: el job se ha ejecutado con éxito contra `market_data_db`, con los dos runners (INE y MIVAU) comprobados como idempotentes en una segunda ejecución. Bloque 4 (prueba de `MarketData.Api` con la cabecera `X-Internal-Api-Key` contra los datos reales) — pendiente de empezar, es el siguiente paso antes de cerrar la fase.
-**Última fase completada:** Fase 4 — PostgreSQL + EF Core (Property Service) ✅ — con ella se cierra también la Fase 3
+**Fase en curso:** Fase 6 — Resiliencia (sobre los `HttpClient` de INE y MIVAU) — sin empezar todavía.
+**Última fase completada:** Fase 5 — Market Data Service ✅ — Bloque 4 (prueba de `MarketData.Api` con la cabecera `X-Internal-Api-Key` contra los datos reales) verificado: `GET /api/v1/property-sales?provinceCode=28` y `GET /api/v1/appraised-values?provinceCode=28` devuelven datos reales de `market_data_db` con la cabecera correcta (Madrid: compraventas de 2026-04 a 2026-07 por estado, valores tasados completos de 2010-01 a 2026-04 por antigüedad), y la misma llamada sin cabecera devuelve `401 No autorizado`, confirmando que `ApiKeyMiddleware` protege el servicio correctamente. Con esto se cierra la Fase 5 completa.
 
 ## Historial
 
@@ -161,7 +161,14 @@ Plan de la fase, por bloques: (1) paquetes NuGet y conexión a Neon, (2) `DbCont
     - **Idempotencia verificada** con una segunda ejecución del job: MIVAU dio `0 filas nuevas, 0 actualizadas, 6506 sin cambios`, confirmando que el redondeo a 2 decimales del parser coincide exactamente con lo ya guardado.
     - **Comportamiento observado y esperado, no un fallo**: en la segunda ejecución, el INE ya había publicado el periodo 2026-07 entre sesiones, y el job importó automáticamente ese mes nuevo (`104 filas nuevas`, 52 provincias × 2 estados) sin tocar los 3 periodos ya existentes — demuestra que la ventana `nult` del cliente INE funciona correctamente ante datos nuevos aparecidos entre ejecuciones.
   - [ ] **Pendiente, detectado durante las pruebas**: `MarketData.ImportJob` no tiene `Properties/launchSettings.json`, así que `dotnet run` arranca en entorno `Production` por defecto y no carga los User Secrets — hay que fijar `$env:DOTNET_ENVIRONMENT = "Development"` a mano en cada sesión de terminal nueva antes de ejecutar el job. Queda pendiente crear ese fichero (igual que ya tiene `MarketData.Api`) para no depender de la variable de entorno manual.
-- [ ] **Bloque 4 — Prueba de `MarketData.Api` contra los datos reales** — siguiente paso: llamar a los dos endpoints de solo lectura (`property-sales`, `appraised-values`) con la cabecera `X-Internal-Api-Key` contra los datos ya importados en `market_data_db`, para cerrar la Fase 5 antes de pasar a la Fase 6 (resiliencia sobre los `HttpClient` de INE y MIVAU).
+- [x] **Bloque 4 — Prueba de `MarketData.Api` contra los datos reales** ✅ completado y verificado:
+  - [x] `GET /api/v1/property-sales?provinceCode=28` con cabecera `X-Internal-Api-Key` correcta — `200 OK`, devuelve filas reales de `compraventas_vivienda` para Madrid (periodos 2026-04 a 2026-07, desglosadas por `estado_vivienda`: `segunda_mano`/`nueva`).
+  - [x] `GET /api/v1/appraised-values?provinceCode=28` con cabecera `X-Internal-Api-Key` correcta — `200 OK`, devuelve la serie completa real de `valores_tasados` para Madrid (trimestral, 2010-01 a 2026-04, desglosada por `age`: `<=5`/`>5`).
+  - [x] `GET /api/v1/property-sales?provinceCode=28` **sin** la cabecera `X-Internal-Api-Key` — `401 No autorizado`, confirmando que `ApiKeyMiddleware` bloquea correctamente las peticiones no autenticadas.
+  - Con esto queda cerrada la **Fase 5 — Market Data Service** en su totalidad.
+
+### Fase 6 — Resiliencia
+- [ ] Pendiente de empezar: resiliencia sobre los `HttpClient` de INE y MIVAU (`MarketData.ImportJob`).
 
 ## Decisiones pendientes / abiertas
 

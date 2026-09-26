@@ -7,7 +7,9 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Http.Resilience;
 using Microsoft.Extensions.Logging;
+using Polly;
 
 // Requerido por ExcelDataReader para leer .xls antiguos (paginas de codigo no
 // registradas por defecto en .NET Core) - una vez al arrancar, antes de leer nada.
@@ -18,13 +20,38 @@ var builder = Host.CreateApplicationBuilder(args);
 builder.Services.AddDbContext<MarketDataDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("MarketData")));
 
+// Retry + timeout por intento para las llamadas al INE y a MIVAU (Fase 6).
+// Sin circuit breaker: el job hace una unica ejecucion y termina, sin llamadas
+// posteriores dentro del mismo proceso a las que un circuito abierto beneficie.
+// El predicado por defecto de HttpRetryStrategyOptions ya distingue fallos
+// transitorios (timeout, error de red, 5xx, 408) -que son los que reintenta-
+// de fallos persistentes (404, formato inesperado), que no se reintentan y
+// deben fallar explicitos.
+static void AddRetryAndTimeout(ResiliencePipelineBuilder<HttpResponseMessage> pipeline)
+{
+    pipeline.AddRetry(new HttpRetryStrategyOptions
+    {
+        MaxRetryAttempts = 3,
+        BackoffType = DelayBackoffType.Exponential,
+        UseJitter = true,
+        Delay = TimeSpan.FromSeconds(2)
+    });
+
+    pipeline.AddTimeout(new HttpTimeoutStrategyOptions
+    {
+        Timeout = TimeSpan.FromSeconds(10)
+    });
+}
+
 builder.Services.AddHttpClient<IIneApiClient, IneApiClient>(client =>
-    client.BaseAddress = new Uri("https://servicios.ine.es/wstempus/js/ES/"));
+        client.BaseAddress = new Uri("https://servicios.ine.es/wstempus/js/ES/"))
+    .AddResilienceHandler("ine-retry-timeout", AddRetryAndTimeout);
 
 builder.Services.AddSingleton<IMivauFileParser, MivauFileParser>();
 
 builder.Services.AddScoped<HousingSaleImportRunner>();
-builder.Services.AddHttpClient<AppraisedValueImportRunner>();
+builder.Services.AddHttpClient<AppraisedValueImportRunner>()
+    .AddResilienceHandler("mivau-retry-timeout", AddRetryAndTimeout);
 
 using var host = builder.Build();
 

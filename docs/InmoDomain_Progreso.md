@@ -4,8 +4,8 @@
 
 ## Estado actual
 
-**Fase en curso:** Fase 6 — Resiliencia (sobre los `HttpClient` de INE y MIVAU) — sin empezar todavía.
-**Última fase completada:** Fase 5 — Market Data Service ✅ — Bloque 4 (prueba de `MarketData.Api` con la cabecera `X-Internal-Api-Key` contra los datos reales) verificado: `GET /api/v1/property-sales?provinceCode=28` y `GET /api/v1/appraised-values?provinceCode=28` devuelven datos reales de `market_data_db` con la cabecera correcta (Madrid: compraventas de 2026-04 a 2026-07 por estado, valores tasados completos de 2010-01 a 2026-04 por antigüedad), y la misma llamada sin cabecera devuelve `401 No autorizado`, confirmando que `ApiKeyMiddleware` protege el servicio correctamente. Con esto se cierra la Fase 5 completa.
+**Fase en curso:** Fase 7 — Analytics Service — sin empezar todavía.
+**Última fase completada:** Fase 6 — Resiliencia ✅ — retry + timeout (sin circuit breaker) añadidos sobre los dos `HttpClient` de `MarketData.ImportJob` (INE y MIVAU) con `Microsoft.Extensions.Http.Resilience` 10.10.0. Parámetros: 3 reintentos, backoff exponencial con jitter desde 2 s, timeout de 10 s por intento — fijados tras medir en local los tiempos reales de las tres llamadas (INE ≈0,10 s; cada `.XLS` de MIVAU ≈0,3 s), dejando un margen amplio (~30×) para el peor caso en producción. `dotnet build` verificado por el usuario, correcto y sin warnings de versión de paquetes. Pendiente (aceptado como no bloqueante): no se hizo la prueba de forzar un timeout artificial para observar los reintentos reales en el log; queda como posible mejora futura si hiciera falta depurar un fallo real de INE/MIVAU. Con esto se cierra la Fase 6 completa.
 
 ## Historial
 
@@ -167,8 +167,18 @@ Plan de la fase, por bloques: (1) paquetes NuGet y conexión a Neon, (2) `DbCont
   - [x] `GET /api/v1/property-sales?provinceCode=28` **sin** la cabecera `X-Internal-Api-Key` — `401 No autorizado`, confirmando que `ApiKeyMiddleware` bloquea correctamente las peticiones no autenticadas.
   - Con esto queda cerrada la **Fase 5 — Market Data Service** en su totalidad.
 
-### Fase 6 — Resiliencia
-- [ ] Pendiente de empezar: resiliencia sobre los `HttpClient` de INE y MIVAU (`MarketData.ImportJob`).
+### Fase 6 — Resiliencia ✅ completada
+- [x] Bloque 1 — Alcance: retry + timeout, **sin** circuit breaker. Motivo: `MarketData.ImportJob` es un job de una sola ejecución (arranca, llama, termina); no hay una "conversación larga" con INE/MIVAU dentro de la que un circuito abierto beneficie a llamadas posteriores, y el circuito se resetearía igualmente en la siguiente ejecución del job.
+- [x] Bloque 2 — Medición real de referencia (PowerShell, `Measure-Command` contra los endpoints reales desde la máquina del usuario): INE (`nult=3`) ≈0,10 s; `.XLS` MIVAU 35101500 ≈0,32 s; `.XLS` MIVAU 35102000 ≈0,27 s. Se usó como cota de "mejor caso", no como base directa de cálculo del timeout.
+- [x] Bloque 3 — Parámetros fijados: 3 reintentos, backoff exponencial con jitter (inicio 2 s), timeout de 10 s por intento, iguales para INE y MIVAU (la diferencia de coste entre reintentar un JSON pequeño y volver a descargar un `.XLS` de pocos MB se consideró irrelevante en este caso).
+- [x] Bloque 4 — Implementación en `MarketData.ImportJob`:
+  - `MarketData.ImportJob.csproj`: añadido `Microsoft.Extensions.Http.Resilience` versión `10.10.0` (verificado que su dependencia de `Microsoft.Extensions.Http` en `net10.0` es `>= 10.0.12`, igual que la ya fijada en el proyecto — sin conflicto de versiones).
+  - `Program.cs`: función local `AddRetryAndTimeout` (reutilizada entre los dos clientes) que registra `AddRetry` (`HttpRetryStrategyOptions`, predicado de reintentos por defecto — cubre timeout/error de red/5xx/408, no cubre 404 ni errores de formato) y `AddTimeout` (`HttpTimeoutStrategyOptions`), enganchados vía `.AddResilienceHandler(...)` a `IIneApiClient` y a `AppraisedValueImportRunner`.
+- [x] Bloque 5 — Verificación: `dotnet build` desde `backend/MarketData/MarketData.ImportJob` (compila también `MarketData.Data` por `ProjectReference`) — correcto, sin errores ni warnings de versión de paquetes.
+  - Nota de incidencia menor durante la verificación, no relacionada con el código: al pegar el `.csproj` entregado, el archivo local quedó con el BOM UTF-8 duplicado al principio (`MSB4025: Data at the root level is invalid`); se resolvió dejando un único BOM con un script corto en PowerShell.
+
+### Fase 7 — Analytics Service
+- [ ] Pendiente de empezar.
 
 ## Decisiones pendientes / abiertas
 

@@ -7,7 +7,7 @@
           {
             "Name": "ComprasVentasImportadas",
             "Properties": {
-              "DefaultMessageTimeToLive": "P14D",
+              "DefaultMessageTimeToLive": "PT1H",
               "DuplicateDetectionHistoryTimeWindow": "PT20S",
               "RequiresDuplicateDetection": false
             },
@@ -16,7 +16,7 @@
                 "Name": "analytics",
                 "Properties": {
                   "DeadLetteringOnMessageExpiration": false,
-                  "DefaultMessageTimeToLive": "P14D",
+                  "DefaultMessageTimeToLive": "PT1H",
                   "LockDuration": "PT1M",
                   "MaxDeliveryCount": 10,
                   "ForwardDeadLetteredMessagesTo": "",
@@ -29,7 +29,7 @@
           {
             "Name": "PreciosImportados",
             "Properties": {
-              "DefaultMessageTimeToLive": "P14D",
+              "DefaultMessageTimeToLive": "PT1H",
               "DuplicateDetectionHistoryTimeWindow": "PT20S",
               "RequiresDuplicateDetection": false
             },
@@ -38,7 +38,7 @@
                 "Name": "analytics",
                 "Properties": {
                   "DeadLetteringOnMessageExpiration": false,
-                  "DefaultMessageTimeToLive": "P14D",
+                  "DefaultMessageTimeToLive": "PT1H",
                   "LockDuration": "PT1M",
                   "MaxDeliveryCount": 10,
                   "ForwardDeadLetteredMessagesTo": "",
@@ -51,7 +51,7 @@
           {
             "Name": "ContrasenaCambiada",
             "Properties": {
-              "DefaultMessageTimeToLive": "P14D",
+              "DefaultMessageTimeToLive": "PT1H",
               "DuplicateDetectionHistoryTimeWindow": "PT20S",
               "RequiresDuplicateDetection": false
             },

@@ -15,6 +15,7 @@ public class AuthService : IAuthService
     private readonly IJwtService _jwtService;
     private readonly IEmailService _emailService;
     private readonly IEventPublisher _eventPublisher;
+    private readonly ILogger<AuthService> _logger;
 
     private readonly TimeSpan _refreshTokenLifetime = TimeSpan.FromDays(30);
     private readonly TimeSpan _recoveryTokenLifetime = TimeSpan.FromHours(1);
@@ -25,7 +26,8 @@ public class AuthService : IAuthService
         IPasswordHashingService passwordHasher,
         IJwtService jwtService,
         IEmailService emailService,
-        IEventPublisher eventPublisher)
+        IEventPublisher eventPublisher,
+        ILogger<AuthService> logger)
     {
         _userRepository = userRepository;
         _refreshTokenRepository = refreshTokenRepository;
@@ -33,6 +35,7 @@ public class AuthService : IAuthService
         _jwtService = jwtService;
         _emailService = emailService;
         _eventPublisher = eventPublisher;
+        _logger = logger;
     }
 
     public async Task<Result<AuthResponseDto>> RegisterAsync(RegisterDto dto)
@@ -122,7 +125,14 @@ public class AuthService : IAuthService
         user.RecoveryTokenExpiresAt = DateTime.UtcNow.Add(_recoveryTokenLifetime);
         await _userRepository.UpdateAsync(user);
 
-        await _emailService.SendPasswordResetEmailAsync(user.Email, rawToken);
+        try
+        {
+            await _emailService.SendPasswordResetEmailAsync(user.Email, rawToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "No se pudo enviar el email de recuperación al usuario {UserId}.", user.Id);
+        }
 
         return Result.Success();
     }
@@ -142,7 +152,7 @@ public class AuthService : IAuthService
         await _userRepository.UpdateAsync(user);
 
         await _refreshTokenRepository.RevokeAllActiveForUserAsync(user.Id);
-        await _eventPublisher.PublishPasswordChangedAsync(user.Id);
+        await PublishPasswordChangedSafelyAsync(user.Id);
 
         return Result.Success();
     }
@@ -196,9 +206,21 @@ public class AuthService : IAuthService
         await _userRepository.UpdateAsync(user);
 
         await _refreshTokenRepository.RevokeAllActiveForUserAsync(userId);
-        await _eventPublisher.PublishPasswordChangedAsync(userId);
+        await PublishPasswordChangedSafelyAsync(userId);
 
         return Result.Success();
+    }
+
+    private async Task PublishPasswordChangedSafelyAsync(Guid userId)
+    {
+        try
+        {
+            await _eventPublisher.PublishPasswordChangedAsync(userId);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "No se pudo publicar ContrasenaCambiada para el usuario {UserId}.", userId);
+        }
     }
 
     private async Task<AuthResponseDto> IssueTokensAsync(User user)

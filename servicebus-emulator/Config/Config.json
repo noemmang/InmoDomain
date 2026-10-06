@@ -47,6 +47,15 @@
                 }
               }
             ]
+          },
+          {
+            "Name": "ContrasenaCambiada",
+            "Properties": {
+              "DefaultMessageTimeToLive": "P14D",
+              "DuplicateDetectionHistoryTimeWindow": "PT20S",
+              "RequiresDuplicateDetection": false
+            },
+            "Subscriptions": []
           }
         ]
       }

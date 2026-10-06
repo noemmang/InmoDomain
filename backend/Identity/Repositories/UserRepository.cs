@@ -33,4 +33,9 @@ public class UserRepository : IUserRepository
     {
         await _context.SaveChangesAsync();
     }
+
+    public async Task<User?> GetByRecoveryTokenHashAsync(string tokenHash)
+    {
+        return await _context.Users.FirstOrDefaultAsync(u => u.RecoveryTokenHash == tokenHash);
+    }
 }

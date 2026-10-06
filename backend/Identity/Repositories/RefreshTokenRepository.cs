@@ -28,4 +28,12 @@ public class RefreshTokenRepository : IRefreshTokenRepository
     {
         await _context.SaveChangesAsync();
     }
+
+    public async Task RevokeAllActiveForUserAsync(Guid userId)
+    {
+        var now = DateTime.UtcNow;
+        await _context.RefreshTokens
+            .Where(r => r.UserId == userId && r.RevokedAt == null)
+            .ExecuteUpdateAsync(setters => setters.SetProperty(r => r.RevokedAt, now));
+    }
 }

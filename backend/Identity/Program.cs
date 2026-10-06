@@ -35,6 +35,7 @@ builder.Services.AddHttpClient<IEmailService, ResendEmailService>(client =>
 
     client.BaseAddress = new Uri(baseUrl);
     client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
+    client.DefaultRequestHeaders.UserAgent.ParseAdd("InmoDomain-Identity/1.0");
 });
 
 var privateKeyBase64 = builder.Configuration["Jwt:PrivateKey"]

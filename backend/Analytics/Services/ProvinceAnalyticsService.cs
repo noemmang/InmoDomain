@@ -1,5 +1,6 @@
 using Analytics.Dtos;
 using Analytics.Integrations.MarketData;
+using Analytics.Integrations.Property;
 using Analytics.Models;
 using Analytics.Repositories;
 
@@ -9,14 +10,19 @@ public class ProvinceAnalyticsService : IProvinceAnalyticsService
 {
     private readonly IPropertyScoreRepository _propertyScoreRepository;
     private readonly IMarketDataClient _marketDataClient;
+    private readonly IPropertyClient _propertyClient;
 
-    public ProvinceAnalyticsService(IPropertyScoreRepository propertyScoreRepository, IMarketDataClient marketDataClient)
+    public ProvinceAnalyticsService(
+        IPropertyScoreRepository propertyScoreRepository,
+        IMarketDataClient marketDataClient,
+        IPropertyClient propertyClient)
     {
         _propertyScoreRepository = propertyScoreRepository;
         _marketDataClient = marketDataClient;
+        _propertyClient = propertyClient;
     }
 
-    public async Task<ProvinceAnalyticsDto> GetAsync(string provinceCode, DateOnly? from, DateOnly? to, int? trendQuarters, Guid? userId)
+    public async Task<ProvinceAnalyticsDto> GetAsync(string provinceCode, DateOnly? from, DateOnly? to, int? trendQuarters, Guid? userId, string? accessToken)
     {
         var history = await _propertyScoreRepository.GetHistoryAsync(provinceCode, from, to);
         var sales = await _marketDataClient.GetPropertySalesAsync(provinceCode, from, to);
@@ -41,11 +47,18 @@ public class ProvinceAnalyticsService : IProvinceAnalyticsService
             IsFavorite = null
         };
 
-        if (userId is not null)
+        if (userId is not null && accessToken is not null)
         {
-            // Pendiente de Fase 8: llamada síncrona a Property (GET /api/v1/favorites)
-            // con el JWT reenviado, para resolver esFavorita. Hoy userId siempre
-            // llega null porque todavía no hay middleware de autenticación JWT.
+            try
+            {
+                var favorites = await _propertyClient.GetFavoritesAsync(accessToken);
+                dto.IsFavorite = favorites.Any(f => f.ProvinceCode == provinceCode);
+            }
+            catch (HttpRequestException)
+            {
+                // Ruta pública: si Property no responde, la ficha sale igual sin personalizar.
+                dto.IsFavorite = null;
+            }
         }
 
         if (trendQuarters is > 0)

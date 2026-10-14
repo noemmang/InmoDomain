@@ -6,6 +6,7 @@ using Analytics.Data;
 using Analytics.Repositories;
 using Analytics.Services;
 using Analytics.Integrations.MarketData;
+using Analytics.Integrations.Property;
 using Analytics.Events;
 using Analytics.Middleware;
 
@@ -53,6 +54,16 @@ builder.Services.AddHttpClient<IMarketDataClient, MarketDataClient>(client =>
 
     client.BaseAddress = new Uri(baseUrl);
     client.DefaultRequestHeaders.Add("X-Internal-Api-Key", apiKey);
+});
+
+// Llamada síncrona a Property (sin pasar por el Gateway) con el JWT del usuario reenviado,
+// para resolver isFavorite en la ficha de provincia.
+builder.Services.AddHttpClient<IPropertyClient, PropertyClient>(client =>
+{
+    var baseUrl = builder.Configuration["PropertyApi:BaseUrl"]
+        ?? throw new InvalidOperationException("Falta PropertyApi:BaseUrl en la configuración.");
+
+    client.BaseAddress = new Uri(baseUrl);
 });
 
 // JWT opcional: un token ausente o inválido deja la petición como anónima, nunca responde 401

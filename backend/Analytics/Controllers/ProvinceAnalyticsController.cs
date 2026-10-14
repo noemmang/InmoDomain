@@ -22,8 +22,9 @@ public class ProvinceAnalyticsController : ControllerBase
         [FromQuery] int? trendQuarters)
     {
         var userId = TryGetAuthenticatedUserId();
+        var accessToken = userId is null ? null : TryGetBearerToken();
 
-        var result = await _provinceAnalyticsService.GetAsync(provinceCode, from, to, trendQuarters, userId);
+        var result = await _provinceAnalyticsService.GetAsync(provinceCode, from, to, trendQuarters, userId, accessToken);
 
         return Ok(result);
     }
@@ -38,5 +39,15 @@ public class ProvinceAnalyticsController : ControllerBase
         var subClaim = User.FindFirst("sub")?.Value;
 
         return Guid.TryParse(subClaim, out var userId) ? userId : null;
+    }
+
+    private string? TryGetBearerToken()
+    {
+        var header = Request.Headers.Authorization.ToString();
+        const string prefix = "Bearer ";
+
+        return header.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)
+            ? header[prefix.Length..].Trim()
+            : null;
     }
 }

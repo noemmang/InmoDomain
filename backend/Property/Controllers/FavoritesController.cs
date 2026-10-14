@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Property.Common;
 using Property.Dtos;
@@ -6,6 +7,7 @@ using Property.Services;
 namespace Property.Controllers;
 
 [ApiController]
+[Authorize]
 [Route("api/v1/favorites")]
 public class FavoritesController : ControllerBase
 {
@@ -57,8 +59,16 @@ public class FavoritesController : ControllerBase
         return NoContent();
     }
 
+    // Extrae el usuario_id del claim "sub" del JWT ya validado.
     private Guid GetUserId()
     {
-        throw new NotImplementedException("Se implementará al integrar la validación de JWT en una fase posterior.");
+        var subClaim = User.FindFirst("sub")?.Value;
+
+        if (!Guid.TryParse(subClaim, out var userId))
+        {
+            throw new InvalidOperationException("El JWT validado no contiene un claim 'sub' con un Guid válido.");
+        }
+
+        return userId;
     }
 }

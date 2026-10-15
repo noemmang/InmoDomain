@@ -15,7 +15,7 @@ public class AnalyticsCalculationService : IAnalyticsCalculationService
         _marketDataClient = marketDataClient;
     }
 
-    public async Task RecalculateActivityAsync(DateOnly period, IReadOnlyCollection<string> provinceCodes)
+    public async Task<RecalculationResult> RecalculateActivityAsync(DateOnly period, IReadOnlyCollection<string> provinceCodes)
     {
         var targetQuarter = GetQuarterStart(period);
 
@@ -63,9 +63,11 @@ public class AnalyticsCalculationService : IAnalyticsCalculationService
 
             await _propertyScoreRepository.UpsertAsync(propertyScore);
         }
+
+        return new RecalculationResult(targetQuarter, currentTotals.Keys.ToList());
     }
 
-    public async Task RecalculatePriceAsync(DateOnly period, IReadOnlyCollection<string> provinceCodes)
+    public async Task<RecalculationResult> RecalculatePriceAsync(DateOnly period, IReadOnlyCollection<string> provinceCodes)
     {
         var targetQuarter = GetQuarterStart(period);
 
@@ -117,6 +119,8 @@ public class AnalyticsCalculationService : IAnalyticsCalculationService
 
             await _propertyScoreRepository.UpsertAsync(propertyScore);
         }
+
+        return new RecalculationResult(targetQuarter, currentAverages.Keys.ToList());
     }
 
     private static decimal? CalculateTrend(

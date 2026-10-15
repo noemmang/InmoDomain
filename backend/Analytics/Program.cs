@@ -87,6 +87,7 @@ builder.Services
         };
     });
 
+builder.Services.AddSingleton<IEventPublisher, ServiceBusEventPublisher>();
 builder.Services.AddHostedService<ServiceBusEventConsumer>();
 
 var app = builder.Build();

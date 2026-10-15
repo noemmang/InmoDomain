@@ -8,6 +8,7 @@ public class ServiceBusEventConsumer : BackgroundService
 {
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly IConfiguration _configuration;
+    private readonly IEventPublisher _eventPublisher;
     private readonly ILogger<ServiceBusEventConsumer> _logger;
 
     private ServiceBusClient? _client;
@@ -17,10 +18,12 @@ public class ServiceBusEventConsumer : BackgroundService
     public ServiceBusEventConsumer(
         IServiceScopeFactory scopeFactory,
         IConfiguration configuration,
+        IEventPublisher eventPublisher,
         ILogger<ServiceBusEventConsumer> logger)
     {
         _scopeFactory = scopeFactory;
         _configuration = configuration;
+        _eventPublisher = eventPublisher;
         _logger = logger;
     }
 
@@ -61,7 +64,8 @@ public class ServiceBusEventConsumer : BackgroundService
         using var scope = _scopeFactory.CreateScope();
         var calculationService = scope.ServiceProvider.GetRequiredService<IAnalyticsCalculationService>();
 
-        await calculationService.RecalculateActivityAsync(envelope.Period, envelope.ProvinceCodes);
+        var result = await calculationService.RecalculateActivityAsync(envelope.Period, envelope.ProvinceCodes);
+        await PublishRecalculatedSafelyAsync(result);
 
         await args.CompleteMessageAsync(args.Message);
     }
@@ -74,9 +78,31 @@ public class ServiceBusEventConsumer : BackgroundService
         using var scope = _scopeFactory.CreateScope();
         var calculationService = scope.ServiceProvider.GetRequiredService<IAnalyticsCalculationService>();
 
-        await calculationService.RecalculatePriceAsync(envelope.Period, envelope.ProvinceCodes);
+        var result = await calculationService.RecalculatePriceAsync(envelope.Period, envelope.ProvinceCodes);
+        await PublishRecalculatedSafelyAsync(result);
 
         await args.CompleteMessageAsync(args.Message);
+    }
+
+    private async Task PublishRecalculatedSafelyAsync(RecalculationResult result)
+    {
+        if (result.ProvinceCodes.Count == 0)
+        {
+            return;
+        }
+
+        try
+        {
+            await _eventPublisher.PublishIndicesRecalculatedAsync(result.Period, result.ProvinceCodes);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(
+                ex,
+                "No se pudo publicar IndicesRecalculados para el periodo {Period} ({ProvinceCount} provincias).",
+                result.Period,
+                result.ProvinceCodes.Count);
+        }
     }
 
     private Task ProcessErrorAsync(ProcessErrorEventArgs args)

@@ -22,6 +22,13 @@ public class AlertRepository : IAlertRepository
             .ToListAsync();
     }
 
+    public async Task<IEnumerable<Alert>> GetActiveByProvinceCodesAsync(IReadOnlyCollection<string> provinceCodes)
+    {
+        return await _context.Alerts
+            .Where(a => a.Active && provinceCodes.Contains(a.ProvinceCode))
+            .ToListAsync();
+    }
+
     public async Task<Alert?> GetByIdAsync(Guid id)
     {
         return await _context.Alerts.FirstOrDefaultAsync(a => a.Id == id);

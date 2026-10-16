@@ -3,6 +3,8 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Alerts.Data;
+using Alerts.Events;
+using Alerts.Integrations.Analytics;
 using Alerts.Integrations.Property;
 using Alerts.Repositories;
 using Alerts.Services;
@@ -38,6 +40,10 @@ builder.Services.AddDbContext<AlertsDbContext>(options =>
 
 builder.Services.AddScoped<IAlertRepository, AlertRepository>();
 builder.Services.AddScoped<IAlertService, AlertService>();
+builder.Services.AddScoped<IAlertEvaluationService, AlertEvaluationService>();
+
+builder.Services.AddSingleton<IEventPublisher, ServiceBusEventPublisher>();
+builder.Services.AddHostedService<ServiceBusEventConsumer>();
 
 // Llamada síncrona a Property (sin pasar por el Gateway) para validar codigo_provincia.
 builder.Services.AddHttpClient<IPropertyClient, PropertyClient>(client =>
@@ -47,6 +53,20 @@ builder.Services.AddHttpClient<IPropertyClient, PropertyClient>(client =>
 
     client.BaseAddress = new Uri(baseUrl);
     client.Timeout = TimeSpan.FromSeconds(10);
+});
+
+// Llamada síncrona a la API interna de Analytics (sin pasar por el Gateway) para leer el valor
+// actual de una métrica, protegida con la clave compartida X-Internal-Api-Key.
+builder.Services.AddHttpClient<IAnalyticsClient, AnalyticsClient>(client =>
+{
+    var baseUrl = builder.Configuration["AnalyticsApi:BaseUrl"]
+        ?? throw new InvalidOperationException("Falta AnalyticsApi:BaseUrl en la configuración.");
+    var apiKey = builder.Configuration["AnalyticsApi:ApiKey"]
+        ?? throw new InvalidOperationException("Falta AnalyticsApi:ApiKey en User Secrets.");
+
+    client.BaseAddress = new Uri(baseUrl);
+    client.Timeout = TimeSpan.FromSeconds(10);
+    client.DefaultRequestHeaders.Add("X-Internal-Api-Key", apiKey);
 });
 
 // Validación del JWT con los mismos parámetros que Identity, el Gateway, Property y Analytics.

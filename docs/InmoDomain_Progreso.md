@@ -4,7 +4,7 @@
 
 ## Estado actual
 
-**Fase en curso:** Fase 11 — Jobs — sin empezar. Siguiente paso: Bloque 1, que el ImportJob de Market Data publique `ComprasVentasImportadas`/`PreciosImportados` (hoy nada dispara la cadena importación → recálculo → alertas → notificaciones). Antes de nada, el usuario debe ejecutar los comandos y las pruebas del Bloque 6 de la Fase 10 (ver abajo).
+**Fase en curso:** Fase 11 — Jobs — sin empezar. Siguiente paso: Bloque 1, que el ImportJob de Market Data publique `ComprasVentasImportadas`/`PreciosImportados` (hoy nada dispara la cadena importación → recálculo → alertas → notificaciones). El Bloque 6 de la Fase 10 está verificado para `ContrasenaCambiada` (ver Fase 10).
 **Última fase completada:** Fase 10 — Alert Service + Notification Service ✅ (en código; pruebas de punta a punta pendientes, ver Fase 10). El Gateway (Fase 9) expone ya 20 rutas: 14 de la Fase 9, 2 de Alerts y 4 de Notifications. El detalle de las fases anteriores sigue en el Historial.
 
 ## Historial
@@ -134,7 +134,8 @@
   - **Gateway**: el `appsettings.json` real ya tenía las rutas `alerts-list` y `alerts-detail` y el cluster `alerts` (no constaban en la documentación); se añaden `notifications-list`, `notifications-read`, `notifications-read-all`, `notifications-detail` y el cluster `notifications` (5101). Total: 20 rutas.
   - **Corrección de repositorio**: `backend/Alerts/Data/AlertsDbContextFactory.cs` figuraba como creado pero no estaba en el repositorio; se entrega de nuevo, con el patrón de Analytics (`ConnectionStrings:AlertsMigrations`).
   - **Pasos pendientes del usuario**: crear `notifications_db` en Neon, configurar los secretos (`ConnectionStrings:Notifications`, `ConnectionStrings:NotificationsMigrations`, `ConnectionStrings:ServiceBus`, `Jwt:PublicKey`), `dotnet build`, `dotnet ef migrations add InitialCreate` y `database update`, y borrar los `.gitkeep` de las carpetas que ya tienen ficheros.
-  - **No verificado**: toda la cadena de Notifications (creación desde `AlertaDisparada` y `ContrasenaCambiada`, deduplicación, endpoints a través del Gateway) y, aguas arriba, la evaluación de alertas del Bloque 5, que sigue aplazada. Con el consumidor de Notifications ya se podrá ver el contenido real de los mensajes de los topics.
+  - **Verificado por el usuario de punta a punta** (Identity, emulador de Service Bus, Notifications, Neon y Gateway levantados): `me/password` publica `ContrasenaCambiada` y aparece una notificación `contrasena_cambiada` en `GET /api/v1/notifications` con `read: false`; `PUT {id}/read` la marca (y `unreadOnly=true` sale vacío), `PUT read-all` responde 204, `DELETE {id}` la oculta (el listado queda vacío) y repetir el `DELETE` da 404. Incidencias de la prueba, sin relación con el código: servicios sin arrancar (No es posible conectar con el servidor remoto) y credenciales inexistentes (401 en cascada), resueltas arrancando los servicios y registrando un usuario de pruebas nuevo.
+  - **No verificado**: la creación desde `AlertaDisparada` (el texto con provincia y trimestre y la deduplicación por `(id_alerta, periodo)`), la degradación a `provincia {código}` con Property caído, y, aguas arriba, la evaluación de alertas del Bloque 5, que sigue aplazada.
 - **Pendientes no bloqueantes de la Fase 10:** índice único en `alertas` si se quiere impedir duplicados concurrentes; `bienvenida` (requiere `UsuarioRegistrado` en Identity) y `precio_actualizado` (requiere endpoint interno en Property); correo desde Notifications (Fase 14); prueba de punta a punta de la cadena completa (alerta, disparo, no repetición, notificación, lectura y borrado lógico).
 
 ### Fase 11 — Jobs

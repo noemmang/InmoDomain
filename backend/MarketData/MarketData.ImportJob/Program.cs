@@ -1,5 +1,6 @@
 using System.Text;
 using MarketData.Data;
+using MarketData.ImportJob.Events;
 using MarketData.ImportJob.Import;
 using MarketData.ImportJob.Integrations.Ine;
 using MarketData.ImportJob.Integrations.Mivau;
@@ -53,6 +54,8 @@ builder.Services.AddScoped<HousingSaleImportRunner>();
 builder.Services.AddHttpClient<AppraisedValueImportRunner>()
     .AddResilienceHandler("mivau-retry-timeout", AddRetryAndTimeout);
 
+builder.Services.AddSingleton<IEventPublisher, ServiceBusEventPublisher>();
+
 using var host = builder.Build();
 
 // nult del INE: cuantos meses recientes se piden en cada ejecucion. 3 da margen
@@ -62,20 +65,49 @@ const int LastPeriods = 3;
 
 var logger = host.Services.GetRequiredService<ILogger<Program>>();
 
-try
+// Cada etapa (importar y publicar) es independiente: si una falla, la otra se ejecuta igualmente
+// y el proceso termina con codigo de salida 1.
+async Task<bool> RunStageAsync(string name, Func<Task> stage)
 {
-    using var scope = host.Services.CreateScope();
+    try
+    {
+        await stage();
+        return true;
+    }
+    catch (Exception ex)
+    {
+        logger.LogError(ex, "La etapa {Stage} del ImportJob ha fallado.", name);
+        return false;
+    }
+}
 
-    var housingSaleRunner = scope.ServiceProvider.GetRequiredService<HousingSaleImportRunner>();
-    await housingSaleRunner.RunAsync(LastPeriods);
+using var scope = host.Services.CreateScope();
+var publisher = host.Services.GetRequiredService<IEventPublisher>();
 
-    var appraisedValueRunner = scope.ServiceProvider.GetRequiredService<AppraisedValueImportRunner>();
-    await appraisedValueRunner.RunAsync();
+var housingSalesOk = await RunStageAsync("compraventas", async () =>
+{
+    var runner = scope.ServiceProvider.GetRequiredService<HousingSaleImportRunner>();
+    var changes = await runner.RunAsync(LastPeriods);
+    await publisher.PublishImportedAsync(EventTopics.ComprasVentasImportadas, changes);
 
+    logger.LogInformation("Compraventas: {Count} periodos con cambios publicados.", changes.Count);
+});
+
+var appraisedValuesOk = await RunStageAsync("precios", async () =>
+{
+    var runner = scope.ServiceProvider.GetRequiredService<AppraisedValueImportRunner>();
+    var changes = await runner.RunAsync();
+    await publisher.PublishImportedAsync(EventTopics.PreciosImportados, changes);
+
+    logger.LogInformation("Precios: {Count} periodos con cambios publicados.", changes.Count);
+});
+
+if (housingSalesOk && appraisedValuesOk)
+{
     logger.LogInformation("ImportJob completado correctamente.");
 }
-catch (Exception ex)
+else
 {
-    logger.LogError(ex, "ImportJob ha fallado.");
+    logger.LogError("ImportJob terminado con errores.");
     Environment.ExitCode = 1;
 }

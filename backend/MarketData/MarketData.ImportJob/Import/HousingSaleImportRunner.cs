@@ -28,7 +28,8 @@ public class HousingSaleImportRunner
     }
 
     // lastPeriods es el nult que se pide al INE: cuantos meses mas recientes traer.
-    public async Task RunAsync(int lastPeriods, CancellationToken cancellationToken = default)
+    // Devuelve los periodos con filas insertadas o actualizadas y las provincias afectadas.
+    public async Task<IReadOnlyList<ChangedPeriod>> RunAsync(int lastPeriods, CancellationToken cancellationToken = default)
     {
         var candidates = new List<(string ProvinceCode, DateOnly Period, DwellingStatus Status, int OperationsCount)>();
 
@@ -45,7 +46,7 @@ public class HousingSaleImportRunner
         if (candidates.Count == 0)
         {
             _logger.LogWarning("El cliente INE no devolvio ninguna fila de compraventas; no se hace ningun cambio.");
-            return;
+            return Array.Empty<ChangedPeriod>();
         }
 
         var affectedPeriods = candidates.Select(c => c.Period).Distinct().ToList();
@@ -58,6 +59,7 @@ public class HousingSaleImportRunner
 
         var inserted = 0;
         var updated = 0;
+        var changes = new Dictionary<DateOnly, HashSet<string>>();
 
         foreach (var candidate in candidates)
         {
@@ -70,6 +72,7 @@ public class HousingSaleImportRunner
                 {
                     existingEntity.OperationsCount = candidate.OperationsCount;
                     updated++;
+                    RegisterChange(changes, candidate.Period, candidate.ProvinceCode);
                 }
             }
             else
@@ -83,6 +86,7 @@ public class HousingSaleImportRunner
                     OperationsCount = candidate.OperationsCount
                 });
                 inserted++;
+                RegisterChange(changes, candidate.Period, candidate.ProvinceCode);
             }
         }
 
@@ -91,5 +95,26 @@ public class HousingSaleImportRunner
         _logger.LogInformation(
             "Compraventas de vivienda: {Inserted} filas nuevas, {Updated} actualizadas, {Unchanged} sin cambios (de {Total} candidatas).",
             inserted, updated, candidates.Count - inserted - updated, candidates.Count);
+
+        return ToChangedPeriods(changes);
+    }
+
+    private static void RegisterChange(Dictionary<DateOnly, HashSet<string>> changes, DateOnly period, string provinceCode)
+    {
+        if (!changes.TryGetValue(period, out var provinceCodes))
+        {
+            provinceCodes = new HashSet<string>();
+            changes[period] = provinceCodes;
+        }
+
+        provinceCodes.Add(provinceCode);
+    }
+
+    private static IReadOnlyList<ChangedPeriod> ToChangedPeriods(Dictionary<DateOnly, HashSet<string>> changes)
+    {
+        return changes
+            .OrderBy(c => c.Key)
+            .Select(c => new ChangedPeriod(c.Key, c.Value.OrderBy(code => code, StringComparer.Ordinal).ToList()))
+            .ToList();
     }
 }

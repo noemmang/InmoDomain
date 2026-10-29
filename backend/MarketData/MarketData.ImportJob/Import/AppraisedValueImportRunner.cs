@@ -32,7 +32,8 @@ public class AppraisedValueImportRunner
         _logger = logger;
     }
 
-    public async Task RunAsync(CancellationToken cancellationToken = default)
+    // Devuelve los periodos con filas insertadas o actualizadas y las provincias afectadas.
+    public async Task<IReadOnlyList<ChangedPeriod>> RunAsync(CancellationToken cancellationToken = default)
     {
         var candidates = new List<ParsedMivauRow>();
 
@@ -54,7 +55,7 @@ public class AppraisedValueImportRunner
         if (candidates.Count == 0)
         {
             _logger.LogWarning("El parser MIVAU no devolvio ninguna fila; no se hace ningun cambio.");
-            return;
+            return Array.Empty<ChangedPeriod>();
         }
 
         // Se relee el fichero completo, asi que se precarga toda la tabla (no solo
@@ -64,6 +65,7 @@ public class AppraisedValueImportRunner
 
         var inserted = 0;
         var updated = 0;
+        var changes = new Dictionary<DateOnly, HashSet<string>>();
 
         foreach (var candidate in candidates)
         {
@@ -75,6 +77,7 @@ public class AppraisedValueImportRunner
                 {
                     existingEntity.PricePerSquareMeter = candidate.PricePerSquareMeter;
                     updated++;
+                    RegisterChange(changes, candidate.Period, candidate.ProvinceCode);
                 }
             }
             else
@@ -88,6 +91,7 @@ public class AppraisedValueImportRunner
                     PricePerSquareMeter = candidate.PricePerSquareMeter
                 });
                 inserted++;
+                RegisterChange(changes, candidate.Period, candidate.ProvinceCode);
             }
         }
 
@@ -96,5 +100,26 @@ public class AppraisedValueImportRunner
         _logger.LogInformation(
             "Valores tasados: {Inserted} filas nuevas, {Updated} actualizadas, {Unchanged} sin cambios (de {Total} candidatas).",
             inserted, updated, candidates.Count - inserted - updated, candidates.Count);
+
+        return ToChangedPeriods(changes);
+    }
+
+    private static void RegisterChange(Dictionary<DateOnly, HashSet<string>> changes, DateOnly period, string provinceCode)
+    {
+        if (!changes.TryGetValue(period, out var provinceCodes))
+        {
+            provinceCodes = new HashSet<string>();
+            changes[period] = provinceCodes;
+        }
+
+        provinceCodes.Add(provinceCode);
+    }
+
+    private static IReadOnlyList<ChangedPeriod> ToChangedPeriods(Dictionary<DateOnly, HashSet<string>> changes)
+    {
+        return changes
+            .OrderBy(c => c.Key)
+            .Select(c => new ChangedPeriod(c.Key, c.Value.OrderBy(code => code, StringComparer.Ordinal).ToList()))
+            .ToList();
     }
 }

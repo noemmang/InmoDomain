@@ -58,10 +58,14 @@ builder.Services.AddSingleton<IEventPublisher, ServiceBusEventPublisher>();
 
 using var host = builder.Build();
 
-// nult del INE: cuantos meses recientes se piden en cada ejecucion. 3 da margen
-// para que una cifra "Provisional" pase a "Definitiva" en una ejecucion posterior
-// sin tener que releer toda la serie historica.
-const int LastPeriods = 3;
+// nult del INE: cuantos meses recientes se piden en cada ejecucion. 3 (valor por defecto) da margen
+// para que una cifra "Provisional" pase a "Definitiva" en una ejecucion posterior sin releer toda
+// la serie historica. Para la carga historica inicial se lanza una unica vez con Import__LastPeriods=60.
+var lastPeriods = host.Services.GetRequiredService<IConfiguration>().GetValue<int?>("Import:LastPeriods") ?? 3;
+if (lastPeriods < 1)
+{
+    throw new InvalidOperationException("Import:LastPeriods debe ser un entero mayor o igual que 1.");
+}
 
 var logger = host.Services.GetRequiredService<ILogger<Program>>();
 
@@ -87,7 +91,7 @@ var publisher = host.Services.GetRequiredService<IEventPublisher>();
 var housingSalesOk = await RunStageAsync("compraventas", async () =>
 {
     var runner = scope.ServiceProvider.GetRequiredService<HousingSaleImportRunner>();
-    var changes = await runner.RunAsync(LastPeriods);
+    var changes = await runner.RunAsync(lastPeriods);
     await publisher.PublishImportedAsync(EventTopics.ComprasVentasImportadas, changes);
 
     logger.LogInformation("Compraventas: {Count} periodos con cambios publicados.", changes.Count);

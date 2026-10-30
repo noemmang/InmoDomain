@@ -10,6 +10,7 @@ obj/
 !.env.example
 appsettings.Development.json
 appsettings.*.local.json
+!backend/Gateway/appsettings.Development.json
 
 ## Frontend (Node / React)
 node_modules/

@@ -17,7 +17,7 @@ namespace Analytics.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "10.0.12")
+                .HasAnnotation("ProductVersion", "10.0.14")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -29,11 +29,11 @@ namespace Analytics.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
-                    b.Property<decimal>("ActivityIndex")
+                    b.Property<decimal?>("ActivityIndex")
                         .HasColumnType("decimal(6,2)")
                         .HasColumnName("indice_actividad");
 
-                    b.Property<decimal>("ActivityIndexNationalRanking")
+                    b.Property<decimal?>("ActivityIndexNationalRanking")
                         .HasColumnType("decimal(6,2)")
                         .HasColumnName("indice_actividad_ranking_nacional");
 
@@ -45,11 +45,11 @@ namespace Analytics.Migrations
                         .HasColumnType("date")
                         .HasColumnName("periodo");
 
-                    b.Property<decimal>("PriceIndex")
+                    b.Property<decimal?>("PriceIndex")
                         .HasColumnType("decimal(6,2)")
                         .HasColumnName("indice_precio");
 
-                    b.Property<decimal>("PriceIndexNationalRanking")
+                    b.Property<decimal?>("PriceIndexNationalRanking")
                         .HasColumnType("decimal(6,2)")
                         .HasColumnName("indice_precio_ranking_nacional");
 

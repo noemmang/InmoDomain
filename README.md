@@ -2,6 +2,8 @@
 
 > 📊 Plataforma para el análisis del mercado inmobiliario español.
 
+[![CI](https://github.com/noemmang/InmoDomain/actions/workflows/ci.yml/badge.svg)](https://github.com/noemmang/InmoDomain/actions/workflows/ci.yml)
+
 **InmoDomain** es una plataforma diseñada para explorar, analizar y comparar información del mercado inmobiliario en España utilizando datos procedentes de fuentes oficiales como el **INE** (tabla 6150) y el **MIVAU**.
 
 El proyecto permite analizar el mercado por provincia, comparar diferentes territorios, calcular un **Property Score** propio, gestionar favoritos y crear alertas personalizadas. 🔍📈
@@ -104,7 +106,8 @@ InmoDomain/
 ├── 📝 docs/
 │
 └── ⚙️ .github/
-    └── workflows/
+    ├── workflows/
+    └── dependabot.yml
 ```
 
 ---
@@ -126,6 +129,18 @@ docker compose up -d
 ```powershell
 docker compose run --rm import-job
 ```
+
+---
+
+## 🔄 CI/CD
+
+El workflow `.github/workflows/ci.yml` se ejecuta en cada pull request y en cada push a `main` (se ignoran los cambios en `docs/`, `frontend/` y ficheros `.md`):
+
+1. 🔨 **Build** — restore y compilación en Release de los 9 proyectos .NET.
+2. 🧪 **Test** — ejecuta todos los proyectos `*Tests.csproj`; si no existe ninguno, lo avisa como *warning*.
+3. 🐳 **Imágenes** — construye las 8 imágenes con sus `Dockerfile`. Solo en push a `main` se publican en GHCR como `ghcr.io/<propietario>/inmodomain-<servicio>` con las etiquetas `latest` y `sha-<commit>`; en pull request solo se construyen.
+
+Dependabot propone cada semana actualizaciones de GitHub Actions, paquetes NuGet e imágenes base de Docker. El despliegue en Azure llega en la Fase 14.
 
 ---
 

@@ -1,0 +1,158 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - "docs/**"
+      - "frontend/**"
+      - "**/*.md"
+  pull_request:
+    branches: [main]
+    paths-ignore:
+      - "docs/**"
+      - "frontend/**"
+      - "**/*.md"
+  workflow_dispatch:
+
+# Una ejecución por rama; en PR se cancela la anterior, en main nunca se cancela una publicación en curso.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 10.0.x
+
+      # No hay .sln: la caché de paquetes se identifica por el contenido de los .csproj.
+      - uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ hashFiles('backend/**/*.csproj') }}
+          restore-keys: nuget-${{ runner.os }}-
+
+      - name: Restore y build de todos los proyectos
+        shell: bash
+        run: |
+          set -euo pipefail
+          mapfile -t projects < <(find backend -name '*.csproj' -not -name '*Tests.csproj' | sort)
+          for project in "${projects[@]}"; do
+            echo "::group::$project"
+            dotnet build "$project" -c Release
+            echo "::endgroup::"
+          done
+
+  test:
+    name: Test
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 10.0.x
+
+      - uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ hashFiles('backend/**/*.csproj') }}
+          restore-keys: nuget-${{ runner.os }}-
+
+      # Ejecuta todos los proyectos *Tests.csproj; sin ninguno, lo avisa como warning explícito.
+      - name: Tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          mapfile -t projects < <(find backend -name '*Tests.csproj' | sort)
+          if [ "${#projects[@]}" -eq 0 ]; then
+            echo "::warning title=Sin tests::El repositorio no contiene proyectos *Tests.csproj; no se ha ejecutado ninguna prueba."
+            exit 0
+          fi
+          for project in "${projects[@]}"; do
+            echo "::group::$project"
+            dotnet test "$project" -c Release
+            echo "::endgroup::"
+          done
+
+  docker:
+    name: Imagen ${{ matrix.service }}
+    needs: [build, test]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - service: gateway
+            dockerfile: backend/Gateway/Dockerfile
+          - service: identity
+            dockerfile: backend/Identity/Dockerfile
+          - service: property
+            dockerfile: backend/Property/Dockerfile
+          - service: analytics
+            dockerfile: backend/Analytics/Dockerfile
+          - service: alerts
+            dockerfile: backend/Alerts/Dockerfile
+          - service: notifications
+            dockerfile: backend/Notifications/Dockerfile
+          - service: marketdata-api
+            dockerfile: backend/MarketData/MarketData.Api/Dockerfile
+          - service: import-job
+            dockerfile: backend/MarketData/MarketData.ImportJob/Dockerfile
+    env:
+      PUBLISH: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: docker/setup-buildx-action@v4
+
+      # Solo se inicia sesión en GHCR cuando la imagen se va a publicar.
+      - name: Login en GHCR
+        if: env.PUBLISH == 'true'
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Metadatos de la imagen
+        id: meta
+        uses: docker/metadata-action@v6
+        with:
+          images: ghcr.io/${{ github.repository_owner }}/inmodomain-${{ matrix.service }}
+          tags: |
+            type=sha
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build y push
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: ${{ matrix.dockerfile }}
+          push: ${{ env.PUBLISH == 'true' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          provenance: false
+          cache-from: type=gha,scope=${{ matrix.service }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.service }}

@@ -1,0 +1,125 @@
+name: inmodomain
+
+# Emulador de Azure Service Bus (y su SQL Server) definido en su propia carpeta.
+include:
+  - path: servicebus-emulator/docker-compose.yml
+
+# Valores comunes de los servicios sin Service Bus.
+x-service: &service
+  restart: on-failure
+  networks:
+    - default
+
+# Valores comunes de los servicios que publican o consumen eventos.
+x-service-bus: &service-bus
+  restart: on-failure
+  networks:
+    - default
+    - sb-emulator
+  depends_on:
+    - emulator
+
+services:
+  gateway:
+    <<: *service
+    build:
+      context: .
+      dockerfile: backend/Gateway/Dockerfile
+    image: ${IMAGE_PREFIX:-ghcr.io/noemmang/inmodomain}-gateway:${IMAGE_TAG:-local}
+    ports:
+      - "5001:8080"
+    environment:
+      Jwt__PublicKey: ${JWT_PUBLIC_KEY:?Falta JWT_PUBLIC_KEY en .env}
+      Cors__AllowedOrigins__0: ${CORS_ALLOWED_ORIGIN:-http://localhost:3000}
+      ReverseProxy__Clusters__identity__Destinations__identity__Address: http://identity:8080/
+      ReverseProxy__Clusters__property__Destinations__property__Address: http://property:8080/
+      ReverseProxy__Clusters__analytics__Destinations__analytics__Address: http://analytics:8080/
+      ReverseProxy__Clusters__alerts__Destinations__alerts__Address: http://alerts:8080/
+      ReverseProxy__Clusters__notifications__Destinations__notifications__Address: http://notifications:8080/
+
+  identity:
+    <<: *service-bus
+    build:
+      context: .
+      dockerfile: backend/Identity/Dockerfile
+    image: ${IMAGE_PREFIX:-ghcr.io/noemmang/inmodomain}-identity:${IMAGE_TAG:-local}
+    environment:
+      ConnectionStrings__Identity: ${IDENTITY_CONNECTION:?Falta IDENTITY_CONNECTION en .env}
+      ConnectionStrings__ServiceBus: ${SERVICEBUS_CONNECTION:?Falta SERVICEBUS_CONNECTION en .env}
+      Jwt__PrivateKey: ${JWT_PRIVATE_KEY:?Falta JWT_PRIVATE_KEY en .env}
+      Resend__ApiKey: ${RESEND_API_KEY:?Falta RESEND_API_KEY en .env}
+
+  property:
+    <<: *service
+    build:
+      context: .
+      dockerfile: backend/Property/Dockerfile
+    image: ${IMAGE_PREFIX:-ghcr.io/noemmang/inmodomain}-property:${IMAGE_TAG:-local}
+    environment:
+      ConnectionStrings__Property: ${PROPERTY_CONNECTION:?Falta PROPERTY_CONNECTION en .env}
+      Jwt__PublicKey: ${JWT_PUBLIC_KEY:?Falta JWT_PUBLIC_KEY en .env}
+
+  marketdata-api:
+    <<: *service
+    build:
+      context: .
+      dockerfile: backend/MarketData/MarketData.Api/Dockerfile
+    image: ${IMAGE_PREFIX:-ghcr.io/noemmang/inmodomain}-marketdata-api:${IMAGE_TAG:-local}
+    environment:
+      ConnectionStrings__MarketData: ${MARKETDATA_CONNECTION:?Falta MARKETDATA_CONNECTION en .env}
+      Security__InternalApiKey: ${MARKETDATA_API_KEY:?Falta MARKETDATA_API_KEY en .env}
+
+  analytics:
+    <<: *service-bus
+    build:
+      context: .
+      dockerfile: backend/Analytics/Dockerfile
+    image: ${IMAGE_PREFIX:-ghcr.io/noemmang/inmodomain}-analytics:${IMAGE_TAG:-local}
+    environment:
+      ConnectionStrings__Analytics: ${ANALYTICS_CONNECTION:?Falta ANALYTICS_CONNECTION en .env}
+      ConnectionStrings__ServiceBus: ${SERVICEBUS_CONNECTION:?Falta SERVICEBUS_CONNECTION en .env}
+      Jwt__PublicKey: ${JWT_PUBLIC_KEY:?Falta JWT_PUBLIC_KEY en .env}
+      MarketDataApi__BaseUrl: http://marketdata-api:8080
+      MarketDataApi__ApiKey: ${MARKETDATA_API_KEY:?Falta MARKETDATA_API_KEY en .env}
+      PropertyApi__BaseUrl: http://property:8080
+      Security__InternalApiKey: ${ANALYTICS_API_KEY:?Falta ANALYTICS_API_KEY en .env}
+
+  alerts:
+    <<: *service-bus
+    build:
+      context: .
+      dockerfile: backend/Alerts/Dockerfile
+    image: ${IMAGE_PREFIX:-ghcr.io/noemmang/inmodomain}-alerts:${IMAGE_TAG:-local}
+    environment:
+      ConnectionStrings__Alerts: ${ALERTS_CONNECTION:?Falta ALERTS_CONNECTION en .env}
+      ConnectionStrings__ServiceBus: ${SERVICEBUS_CONNECTION:?Falta SERVICEBUS_CONNECTION en .env}
+      Jwt__PublicKey: ${JWT_PUBLIC_KEY:?Falta JWT_PUBLIC_KEY en .env}
+      PropertyApi__BaseUrl: http://property:8080
+      AnalyticsApi__BaseUrl: http://analytics:8080
+      AnalyticsApi__ApiKey: ${ANALYTICS_API_KEY:?Falta ANALYTICS_API_KEY en .env}
+
+  notifications:
+    <<: *service-bus
+    build:
+      context: .
+      dockerfile: backend/Notifications/Dockerfile
+    image: ${IMAGE_PREFIX:-ghcr.io/noemmang/inmodomain}-notifications:${IMAGE_TAG:-local}
+    environment:
+      ConnectionStrings__Notifications: ${NOTIFICATIONS_CONNECTION:?Falta NOTIFICATIONS_CONNECTION en .env}
+      ConnectionStrings__ServiceBus: ${SERVICEBUS_CONNECTION:?Falta SERVICEBUS_CONNECTION en .env}
+      Jwt__PublicKey: ${JWT_PUBLIC_KEY:?Falta JWT_PUBLIC_KEY en .env}
+      PropertyApi__BaseUrl: http://property:8080
+
+  # Job de importación: no arranca con "docker compose up", se lanza con "docker compose run --rm import-job".
+  import-job:
+    <<: *service-bus
+    restart: "no"
+    profiles:
+      - jobs
+    build:
+      context: .
+      dockerfile: backend/MarketData/MarketData.ImportJob/Dockerfile
+    image: ${IMAGE_PREFIX:-ghcr.io/noemmang/inmodomain}-import-job:${IMAGE_TAG:-local}
+    environment:
+      ConnectionStrings__MarketData: ${MARKETDATA_CONNECTION:?Falta MARKETDATA_CONNECTION en .env}
+      ConnectionStrings__ServiceBus: ${SERVICEBUS_CONNECTION:?Falta SERVICEBUS_CONNECTION en .env}

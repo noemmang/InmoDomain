@@ -19,32 +19,36 @@ public class AnalyticsCalculationService : IAnalyticsCalculationService
     {
         var targetQuarter = GetQuarterStart(period);
 
-        var currentTotals = new Dictionary<string, decimal>();
+        var currentAverages = new Dictionary<string, decimal>();
         var historicalSeries = new Dictionary<string, List<decimal>>();
 
         foreach (var provinceCode in provinceCodes)
         {
             var history = await _marketDataClient.GetPropertySalesAsync(provinceCode, from: null, to: null);
 
-            var totalsByQuarter = history
+            // Media mensual de operaciones por trimestre: un trimestre con solo los meses publicados hasta ahora
+            // (p. ej. un único mes) es comparable con los trimestres completos de la serie histórica.
+            var monthlyAverageByQuarter = history
                 .GroupBy(s => GetQuarterStart(s.Period))
-                .ToDictionary(g => g.Key, g => (decimal)g.Sum(s => s.OperationsCount));
+                .ToDictionary(
+                    g => g.Key,
+                    g => (decimal)g.Sum(s => s.OperationsCount) / g.Select(s => s.Period).Distinct().Count());
 
-            if (!totalsByQuarter.TryGetValue(targetQuarter, out var currentTotal))
+            if (!monthlyAverageByQuarter.TryGetValue(targetQuarter, out var currentAverage))
             {
                 continue;
             }
 
-            currentTotals[provinceCode] = currentTotal;
-            historicalSeries[provinceCode] = totalsByQuarter.Values.ToList();
+            currentAverages[provinceCode] = currentAverage;
+            historicalSeries[provinceCode] = monthlyAverageByQuarter.Values.ToList();
         }
 
-        var nationalValues = currentTotals.Values.ToList();
+        var nationalValues = currentAverages.Values.ToList();
 
-        foreach (var (provinceCode, currentTotal) in currentTotals)
+        foreach (var (provinceCode, currentAverage) in currentAverages)
         {
-            var historicalPercentile = PercentileCalculator.CalculatePercentileRank(historicalSeries[provinceCode], currentTotal);
-            var nationalRanking = PercentileCalculator.CalculatePercentileRank(nationalValues, currentTotal);
+            var historicalPercentile = PercentileCalculator.CalculatePercentileRank(historicalSeries[provinceCode], currentAverage);
+            var nationalRanking = PercentileCalculator.CalculatePercentileRank(nationalValues, currentAverage);
 
             var existing = await _propertyScoreRepository.GetByProvinceAndPeriodAsync(provinceCode, targetQuarter);
             var isNewRow = existing is null;
@@ -64,7 +68,7 @@ public class AnalyticsCalculationService : IAnalyticsCalculationService
             await _propertyScoreRepository.UpsertAsync(propertyScore);
         }
 
-        return new RecalculationResult(targetQuarter, currentTotals.Keys.ToList());
+        return new RecalculationResult(targetQuarter, currentAverages.Keys.ToList());
     }
 
     public async Task<RecalculationResult> RecalculatePriceAsync(DateOnly period, IReadOnlyCollection<string> provinceCodes)

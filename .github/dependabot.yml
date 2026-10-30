@@ -1,0 +1,40 @@
+version: 2
+
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      github-actions:
+        patterns: ["*"]
+
+  - package-ecosystem: nuget
+    directories:
+      - /backend/Alerts
+      - /backend/Analytics
+      - /backend/Gateway
+      - /backend/Identity
+      - /backend/MarketData/MarketData.Api
+      - /backend/MarketData/MarketData.Data
+      - /backend/MarketData/MarketData.ImportJob
+      - /backend/Notifications
+      - /backend/Property
+    schedule:
+      interval: weekly
+    groups:
+      nuget-minor-patch:
+        update-types: [minor, patch]
+
+  - package-ecosystem: docker
+    directories:
+      - /backend/Alerts
+      - /backend/Analytics
+      - /backend/Gateway
+      - /backend/Identity
+      - /backend/MarketData/MarketData.Api
+      - /backend/MarketData/MarketData.ImportJob
+      - /backend/Notifications
+      - /backend/Property
+    schedule:
+      interval: weekly

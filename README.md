@@ -48,7 +48,7 @@ InmoDomain sigue una **arquitectura de microservicios**, utilizando un **API Gat
 
 * 🚪 **Gateway** — Reverse proxy mediante **YARP** y punto de entrada único del sistema.
 * 🔐 **Identity** — Gestión de autenticación y autorización mediante **JWT**.
-* 🏠 **Property** — Gestión de entidades geográficas como provincias, municipios y favoritos.
+* 🏠 **Property** — Gestión de entidades geográficas como provincias y favoritos.
 * 📊 **MarketData** — Integración y obtención de datos desde fuentes externas como **INE** y **MIVAU**.
 * 📈 **Analytics** — Procesamiento de datos, cálculos de tendencias y generación del **Property Score**.
 * 🔔 **Alerts** — Gestión de reglas y alertas definidas por los usuarios.
@@ -99,9 +99,32 @@ InmoDomain/
 │   └── 📬 Notifications/
 │
 ├── ⚛️ frontend/
+├── 📨 servicebus-emulator/
+├── 🐳 docker-compose.yml
+├── 📝 docs/
 │
 └── ⚙️ .github/
     └── workflows/
+```
+
+---
+
+## 🐳 Ejecución con Docker
+
+Cada servicio tiene su propio `Dockerfile` y el `docker-compose.yml` de la raíz levanta el sistema completo junto al emulador local de Azure Service Bus. Solo el Gateway publica un puerto (`http://localhost:5001`).
+
+1. Copiar `.env.example` a `.env` y rellenar los valores (el fichero `.env` no se versiona).
+2. Construir y levantar los servicios:
+
+```powershell
+docker compose build
+docker compose up -d
+```
+
+3. Ejecutar la importación de datos (job bajo el perfil `jobs`):
+
+```powershell
+docker compose run --rm import-job
 ```
 
 ---

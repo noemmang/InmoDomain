@@ -9,6 +9,7 @@ updates:
       github-actions:
         patterns: ["*"]
 
+  # Servicios sin dependencias transitivas pesadas: un fallo de red en otra entrada no los bloquea.
   - package-ecosystem: nuget
     directories:
       - /backend/Alerts
@@ -16,14 +17,25 @@ updates:
       - /backend/Gateway
       - /backend/Identity
       - /backend/MarketData/MarketData.Api
-      - /backend/MarketData/MarketData.Data
-      - /backend/MarketData/MarketData.ImportJob
       - /backend/Notifications
       - /backend/Property
     schedule:
       interval: weekly
     groups:
       nuget-minor-patch:
+        update-types: [minor, patch]
+
+  # ImportJob aparte: Microsoft.Extensions.Http.Resilience arrastra un árbol transitivo grande
+  # y sus consultas a nuget.org pueden agotar el tiempo de espera; MarketData.Data viaja con él
+  # por ser su ProjectReference.
+  - package-ecosystem: nuget
+    directories:
+      - /backend/MarketData/MarketData.Data
+      - /backend/MarketData/MarketData.ImportJob
+    schedule:
+      interval: weekly
+    groups:
+      nuget-marketdata-minor-patch:
         update-types: [minor, patch]
 
   - package-ecosystem: docker

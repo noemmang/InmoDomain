@@ -31,6 +31,9 @@ catch (CryptographicException)
 var validationKey = new RsaSecurityKey(publicRsa);
 
 builder.Services.AddControllers();
+
+// Sonda de salud sin dependencias externas: no despierta Neon ni Service Bus.
+builder.Services.AddHealthChecks();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
@@ -86,6 +89,7 @@ if (app.Environment.IsDevelopment())
 app.UseAuthentication();
 app.UseAuthorization();
 
+app.MapHealthChecks("/health");
 app.MapControllers();
 
 app.Run();

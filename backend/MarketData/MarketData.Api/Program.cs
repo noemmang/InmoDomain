@@ -16,6 +16,9 @@ builder.Services.AddScoped<IAppraisedValueService, AppraisedValueService>();
 
 builder.Services.AddControllers();
 
+// Sonda de salud sin dependencias externas: no despierta Neon ni Service Bus.
+builder.Services.AddHealthChecks();
+
 if (builder.Environment.IsDevelopment())
 {
     builder.Services.AddEndpointsApiExplorer();
@@ -30,8 +33,12 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-app.UseMiddleware<ApiKeyMiddleware>();
+// La sonda de salud queda fuera de la clave interna: los probes de Container Apps no envían la cabecera.
+app.UseWhen(
+    context => !context.Request.Path.StartsWithSegments("/health"),
+    branch => branch.UseMiddleware<ApiKeyMiddleware>());
 
+app.MapHealthChecks("/health");
 app.MapControllers();
 
 app.Run();

@@ -87,12 +87,12 @@ public class ProvinceAnalyticsService : IProvinceAnalyticsService
         var pastRow = historyInRange.FirstOrDefault(h => h.Period == targetPeriod)
             ?? await _propertyScoreRepository.GetByProvinceAndPeriodAsync(provinceCode, targetPeriod);
 
-        if (pastRow is null)
+        if (pastRow is null || pastRow.PriceIndex is null || currentRow.PriceIndex is null)
         {
             return new CustomTrendDto { TrendQuarters = trendQuarters, HasSufficientData = false };
         }
 
-        var variation = currentRow.PriceIndex - pastRow.PriceIndex;
+        var variation = currentRow.PriceIndex.Value - pastRow.PriceIndex.Value;
 
         return new CustomTrendDto { TrendQuarters = trendQuarters, HasSufficientData = true, Value = variation };
     }

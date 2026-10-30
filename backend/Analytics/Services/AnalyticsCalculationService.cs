@@ -133,7 +133,8 @@ public class AnalyticsCalculationService : IAnalyticsCalculationService
         var pastQuarter = targetQuarter.AddMonths(-3 * quartersBack);
         var pastRow = ownHistory.FirstOrDefault(h => h.Period == pastQuarter);
 
-        return pastRow is null ? null : currentPriceIndex - pastRow.PriceIndex;
+        // Un trimestre sin indice de precio calculado (p. ej. fila creada solo por actividad) no sirve de base.
+        return pastRow?.PriceIndex is null ? null : currentPriceIndex - pastRow.PriceIndex.Value;
     }
 
     private static DateOnly GetQuarterStart(DateOnly period)
@@ -144,13 +145,15 @@ public class AnalyticsCalculationService : IAnalyticsCalculationService
 
     private static decimal? CalculateScore(PropertyScore propertyScore)
     {
-        if (propertyScore.PriceTrendIndex is null)
+        if (propertyScore.PriceIndex is null
+            || propertyScore.ActivityIndex is null
+            || propertyScore.PriceTrendIndex is null)
         {
             return null;
         }
 
         return Math.Round(
-            (propertyScore.PriceIndex + propertyScore.ActivityIndex + propertyScore.PriceTrendIndex.Value) / 3m,
+            (propertyScore.PriceIndex.Value + propertyScore.ActivityIndex.Value + propertyScore.PriceTrendIndex.Value) / 3m,
             2);
     }
 }

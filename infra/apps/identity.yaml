@@ -1,0 +1,63 @@
+location: ${LOCATION}
+type: Microsoft.App/containerApps
+properties:
+  managedEnvironmentId: ${ENV_ID}
+  configuration:
+    activeRevisionsMode: Single
+    ingress:
+      external: false
+      targetPort: 8080
+      transport: auto
+      allowInsecure: false
+    secrets:
+      - name: conn-identity
+        value: ${IDENTITY_CONNECTION}
+      - name: conn-servicebus
+        value: ${SERVICEBUS_APPS_CONNECTION}
+      - name: jwt-private-key
+        value: ${JWT_PRIVATE_KEY}
+      - name: resend-api-key
+        value: ${RESEND_API_KEY}
+  template:
+    containers:
+      - name: identity
+        image: ${IMAGE}
+        resources:
+          cpu: 0.25
+          memory: 0.5Gi
+        env:
+          - name: ConnectionStrings__Identity
+            secretRef: conn-identity
+          - name: ConnectionStrings__ServiceBus
+            secretRef: conn-servicebus
+          - name: Jwt__PrivateKey
+            secretRef: jwt-private-key
+          - name: Resend__ApiKey
+            secretRef: resend-api-key
+          - name: Resend__FromAddress
+            value: ${RESEND_FROM_ADDRESS}
+          - name: Frontend__ResetPasswordUrl
+            value: ${FRONTEND_RESET_PASSWORD_URL}
+        probes:
+          - type: Liveness
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 30
+            failureThreshold: 3
+          - type: Readiness
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 3
+            periodSeconds: 10
+            failureThreshold: 6
+    scale:
+      minReplicas: 0
+      maxReplicas: 1
+      rules:
+        - name: http
+          http:
+            metadata:
+              concurrentRequests: "20"

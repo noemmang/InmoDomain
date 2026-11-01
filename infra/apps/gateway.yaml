@@ -1,0 +1,61 @@
+location: ${LOCATION}
+type: Microsoft.App/containerApps
+properties:
+  managedEnvironmentId: ${ENV_ID}
+  configuration:
+    activeRevisionsMode: Single
+    ingress:
+      external: true
+      targetPort: 8080
+      transport: auto
+      allowInsecure: false
+    secrets:
+      - name: jwt-public-key
+        value: ${JWT_PUBLIC_KEY}
+  template:
+    containers:
+      - name: gateway
+        image: ${IMAGE}
+        resources:
+          cpu: 0.25
+          memory: 0.5Gi
+        env:
+          - name: Jwt__PublicKey
+            secretRef: jwt-public-key
+          - name: Cors__AllowedOrigins__0
+            value: ${CORS_ALLOWED_ORIGIN}
+          - name: ForwardedHeaders__Enabled
+            value: "true"
+          - name: ReverseProxy__Clusters__identity__Destinations__identity__Address
+            value: ${GW_IDENTITY}
+          - name: ReverseProxy__Clusters__property__Destinations__property__Address
+            value: ${GW_PROPERTY}
+          - name: ReverseProxy__Clusters__analytics__Destinations__analytics__Address
+            value: ${GW_ANALYTICS}
+          - name: ReverseProxy__Clusters__alerts__Destinations__alerts__Address
+            value: ${GW_ALERTS}
+          - name: ReverseProxy__Clusters__notifications__Destinations__notifications__Address
+            value: ${GW_NOTIFICATIONS}
+        probes:
+          - type: Liveness
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 30
+            failureThreshold: 3
+          - type: Readiness
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 3
+            periodSeconds: 10
+            failureThreshold: 6
+    scale:
+      minReplicas: 0
+      maxReplicas: 1
+      rules:
+        - name: http
+          http:
+            metadata:
+              concurrentRequests: "20"

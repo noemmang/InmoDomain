@@ -1,0 +1,77 @@
+location: ${LOCATION}
+type: Microsoft.App/containerApps
+properties:
+  managedEnvironmentId: ${ENV_ID}
+  configuration:
+    activeRevisionsMode: Single
+    ingress:
+      external: false
+      targetPort: 8080
+      transport: auto
+      allowInsecure: false
+    secrets:
+      - name: conn-notifications
+        value: ${NOTIFICATIONS_CONNECTION}
+      - name: conn-servicebus
+        value: ${SERVICEBUS_APPS_CONNECTION}
+      - name: sb-scaler
+        value: ${SERVICEBUS_SCALER_CONNECTION}
+      - name: jwt-public-key
+        value: ${JWT_PUBLIC_KEY}
+  template:
+    containers:
+      - name: notifications
+        image: ${IMAGE}
+        resources:
+          cpu: 0.25
+          memory: 0.5Gi
+        env:
+          - name: ConnectionStrings__Notifications
+            secretRef: conn-notifications
+          - name: ConnectionStrings__ServiceBus
+            secretRef: conn-servicebus
+          - name: Jwt__PublicKey
+            secretRef: jwt-public-key
+          - name: PropertyApi__BaseUrl
+            value: ${URL_PROPERTY}
+        probes:
+          - type: Liveness
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 30
+            failureThreshold: 3
+          - type: Readiness
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 3
+            periodSeconds: 10
+            failureThreshold: 6
+    scale:
+      minReplicas: 0
+      maxReplicas: 1
+      rules:
+        - name: http
+          http:
+            metadata:
+              concurrentRequests: "20"
+        - name: cola-alertadisparada
+          custom:
+            type: azure-servicebus
+            metadata:
+              queueName: AlertaDisparada
+              messageCount: "1"
+            auth:
+              - secretRef: sb-scaler
+                triggerParameter: connection
+        - name: cola-contrasenacambiada
+          custom:
+            type: azure-servicebus
+            metadata:
+              queueName: ContrasenaCambiada
+              messageCount: "1"
+            auth:
+              - secretRef: sb-scaler
+                triggerParameter: connection

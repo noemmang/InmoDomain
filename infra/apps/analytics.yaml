@@ -1,0 +1,87 @@
+location: ${LOCATION}
+type: Microsoft.App/containerApps
+properties:
+  managedEnvironmentId: ${ENV_ID}
+  configuration:
+    activeRevisionsMode: Single
+    ingress:
+      external: false
+      targetPort: 8080
+      transport: auto
+      allowInsecure: false
+    secrets:
+      - name: conn-analytics
+        value: ${ANALYTICS_CONNECTION}
+      - name: conn-servicebus
+        value: ${SERVICEBUS_APPS_CONNECTION}
+      - name: sb-scaler
+        value: ${SERVICEBUS_SCALER_CONNECTION}
+      - name: jwt-public-key
+        value: ${JWT_PUBLIC_KEY}
+      - name: marketdata-api-key
+        value: ${MARKETDATA_API_KEY}
+      - name: internal-api-key
+        value: ${ANALYTICS_API_KEY}
+  template:
+    containers:
+      - name: analytics
+        image: ${IMAGE}
+        resources:
+          cpu: 0.25
+          memory: 0.5Gi
+        env:
+          - name: ConnectionStrings__Analytics
+            secretRef: conn-analytics
+          - name: ConnectionStrings__ServiceBus
+            secretRef: conn-servicebus
+          - name: Jwt__PublicKey
+            secretRef: jwt-public-key
+          - name: MarketDataApi__BaseUrl
+            value: ${URL_MARKETDATA}
+          - name: MarketDataApi__ApiKey
+            secretRef: marketdata-api-key
+          - name: PropertyApi__BaseUrl
+            value: ${URL_PROPERTY}
+          - name: Security__InternalApiKey
+            secretRef: internal-api-key
+        probes:
+          - type: Liveness
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 30
+            failureThreshold: 3
+          - type: Readiness
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 3
+            periodSeconds: 10
+            failureThreshold: 6
+    scale:
+      minReplicas: 0
+      maxReplicas: 1
+      rules:
+        - name: http
+          http:
+            metadata:
+              concurrentRequests: "20"
+        - name: cola-comprasventasimportadas
+          custom:
+            type: azure-servicebus
+            metadata:
+              queueName: ComprasVentasImportadas
+              messageCount: "1"
+            auth:
+              - secretRef: sb-scaler
+                triggerParameter: connection
+        - name: cola-preciosimportados
+          custom:
+            type: azure-servicebus
+            metadata:
+              queueName: PreciosImportados
+              messageCount: "1"
+            auth:
+              - secretRef: sb-scaler
+                triggerParameter: connection

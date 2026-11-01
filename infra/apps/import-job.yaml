@@ -1,0 +1,31 @@
+location: ${LOCATION}
+type: Microsoft.App/jobs
+properties:
+  environmentId: ${ENV_ID}
+  configuration:
+    triggerType: Schedule
+    replicaTimeout: 1800
+    replicaRetryLimit: 0
+    scheduleTriggerConfig:
+      cronExpression: ${IMPORT_CRON}
+      parallelism: 1
+      replicaCompletionCount: 1
+    secrets:
+      - name: conn-marketdata
+        value: ${MARKETDATA_CONNECTION}
+      - name: conn-servicebus
+        value: ${SERVICEBUS_APPS_CONNECTION}
+  template:
+    containers:
+      - name: import-job
+        image: ${IMAGE}
+        resources:
+          cpu: 0.5
+          memory: 1Gi
+        env:
+          - name: ConnectionStrings__MarketData
+            secretRef: conn-marketdata
+          - name: ConnectionStrings__ServiceBus
+            secretRef: conn-servicebus
+          - name: Import__LastPeriods
+            value: ${IMPORT_LAST_PERIODS}

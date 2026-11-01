@@ -34,11 +34,11 @@ public class ServiceBusEventConsumer : BackgroundService
 
         _client = new ServiceBusClient(connectionString);
 
-        _propertySalesProcessor = _client.CreateProcessor(EventTopics.ComprasVentasImportadas, EventTopics.AnalyticsSubscription);
+        _propertySalesProcessor = _client.CreateProcessor(EventTopics.ComprasVentasImportadas);
         _propertySalesProcessor.ProcessMessageAsync += ProcessPropertySalesMessageAsync;
         _propertySalesProcessor.ProcessErrorAsync += ProcessErrorAsync;
 
-        _appraisedValuesProcessor = _client.CreateProcessor(EventTopics.PreciosImportados, EventTopics.AnalyticsSubscription);
+        _appraisedValuesProcessor = _client.CreateProcessor(EventTopics.PreciosImportados);
         _appraisedValuesProcessor.ProcessMessageAsync += ProcessAppraisedValuesMessageAsync;
         _appraisedValuesProcessor.ProcessErrorAsync += ProcessErrorAsync;
 

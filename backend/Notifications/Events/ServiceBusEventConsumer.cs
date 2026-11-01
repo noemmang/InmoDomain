@@ -31,13 +31,11 @@ public class ServiceBusEventConsumer : BackgroundService
 
         _client = new ServiceBusClient(connectionString);
 
-        _alertTriggeredProcessor = _client.CreateProcessor(
-            EventTopics.AlertaDisparada, EventTopics.NotificationsSubscription);
+        _alertTriggeredProcessor = _client.CreateProcessor(EventTopics.AlertaDisparada);
         _alertTriggeredProcessor.ProcessMessageAsync += ProcessAlertTriggeredMessageAsync;
         _alertTriggeredProcessor.ProcessErrorAsync += ProcessErrorAsync;
 
-        _passwordChangedProcessor = _client.CreateProcessor(
-            EventTopics.ContrasenaCambiada, EventTopics.NotificationsSubscription);
+        _passwordChangedProcessor = _client.CreateProcessor(EventTopics.ContrasenaCambiada);
         _passwordChangedProcessor.ProcessMessageAsync += ProcessPasswordChangedMessageAsync;
         _passwordChangedProcessor.ProcessErrorAsync += ProcessErrorAsync;
 

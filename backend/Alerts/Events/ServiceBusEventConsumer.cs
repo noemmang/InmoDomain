@@ -30,7 +30,7 @@ public class ServiceBusEventConsumer : BackgroundService
 
         _client = new ServiceBusClient(connectionString);
 
-        _indicesRecalculatedProcessor = _client.CreateProcessor(EventTopics.IndicesRecalculados, EventTopics.AlertsSubscription);
+        _indicesRecalculatedProcessor = _client.CreateProcessor(EventTopics.IndicesRecalculados);
         _indicesRecalculatedProcessor.ProcessMessageAsync += ProcessIndicesRecalculatedMessageAsync;
         _indicesRecalculatedProcessor.ProcessErrorAsync += ProcessErrorAsync;
 

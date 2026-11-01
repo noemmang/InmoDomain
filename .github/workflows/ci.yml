@@ -123,7 +123,7 @@ jobs:
           - service: import-job
             dockerfile: backend/MarketData/MarketData.ImportJob/Dockerfile
     env:
-      PUBLISH: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+      PUBLISH: ${{ github.event_name != 'pull_request' && github.ref == 'refs/heads/main' }}
     steps:
       - uses: actions/checkout@v7
 
@@ -162,8 +162,8 @@ jobs:
   deploy:
     name: Desplegar en Azure
     needs: docker
-    # Solo en push a main y cuando el repositorio tiene configuradas las variables de Azure.
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.AZURE_CLIENT_ID != ''
+    # En main (push o lanzamiento manual) y solo cuando el repositorio tiene configuradas las variables de Azure.
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main' && vars.AZURE_CLIENT_ID != ''
     runs-on: ubuntu-latest
     timeout-minutes: 20
     permissions:

@@ -70,7 +70,7 @@ Cada servicio mantiene su propia responsabilidad y gestiona su propia **base de 
 * 🐘 **PostgreSQL**
 * 🚪 **YARP** — API Gateway
 * ☁️ **Neon** — PostgreSQL gestionado
-* 📨 **Azure Service Bus** — Mensajería asíncrona
+* 📨 **Azure Service Bus** (nivel Basic, colas) — Mensajería asíncrona
 * ☁️ **Azure Container Apps** — Despliegue de servicios
 * ⏱️ **Azure Container Apps Jobs** — Ejecución de tareas periódicas
 
@@ -101,6 +101,7 @@ InmoDomain/
 │   └── 📬 Notifications/
 │
 ├── ⚛️ frontend/
+├── ☁️ infra/
 ├── 📨 servicebus-emulator/
 ├── 🐳 docker-compose.yml
 ├── 📝 docs/
@@ -139,8 +140,20 @@ El workflow `.github/workflows/ci.yml` se ejecuta en cada pull request y en cada
 1. 🔨 **Build** — restore y compilación en Release de los 9 proyectos .NET.
 2. 🧪 **Test** — ejecuta todos los proyectos `*Tests.csproj`; si no existe ninguno, lo avisa como *warning*.
 3. 🐳 **Imágenes** — construye las 8 imágenes con sus `Dockerfile`. Solo en push a `main` se publican en GHCR como `ghcr.io/<propietario>/inmodomain-<servicio>` con las etiquetas `latest` y `sha-<commit>`; en pull request solo se construyen.
+4. ☁️ **Despliegue** — en push a `main`, y solo si el repositorio define las variables `AZURE_*`, inicia sesión en Azure con OIDC (sin secretos de larga duración), actualiza la imagen de cada Container App y del job de importación, y comprueba el Gateway.
 
-Dependabot propone cada semana actualizaciones de GitHub Actions, paquetes NuGet e imágenes base de Docker. El despliegue en Azure llega en la Fase 14.
+Dependabot propone cada semana actualizaciones de GitHub Actions, paquetes NuGet e imágenes base de Docker.
+
+---
+
+## ☁️ Despliegue en Azure
+
+La carpeta `infra/` contiene los scripts de PowerShell y las plantillas YAML de Azure Container Apps:
+
+* `provision.ps1` — crea el grupo de recursos, Log Analytics (con tope diario), el entorno de Container Apps, el namespace de Service Bus (Basic, con una cola por evento), el presupuesto mensual y la identidad de despliegue para GitHub Actions (OIDC).
+* `deploy.ps1` — crea o actualiza los 7 servicios y el job de importación a partir de `infra/apps/*.yaml`, con los secretos tomados de `infra/azure.env` (no versionado; plantilla en `infra/azure.env.example`).
+
+Solo el Gateway tiene ingress externo; el resto de servicios solo es accesible desde el entorno. Todos escalan a cero réplicas y los consumidores de Service Bus se activan por la longitud de su cola.
 
 ---
 

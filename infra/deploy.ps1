@@ -39,17 +39,17 @@ $scalerConnection = Get-AzValue servicebus namespace authorization-rule keys lis
 
 # Valores sustituidos en las plantillas; las llamadas entre servicios usan el FQDN interno por HTTPS.
 $tokens = @{
-    LOCATION                    = $config['AZURE_LOCATION']
-    ENV_ID                      = $environmentId
-    URL_PROPERTY                = "https://property.internal.$domain"
-    URL_ANALYTICS               = "https://analytics.internal.$domain"
-    URL_MARKETDATA              = "https://marketdata-api.internal.$domain"
-    GW_IDENTITY                 = "https://identity.internal.$domain/"
-    GW_PROPERTY                 = "https://property.internal.$domain/"
-    GW_ANALYTICS                = "https://analytics.internal.$domain/"
-    GW_ALERTS                   = "https://alerts.internal.$domain/"
-    GW_NOTIFICATIONS            = "https://notifications.internal.$domain/"
-    SERVICEBUS_APPS_CONNECTION  = $appsConnection
+    LOCATION                     = $config['AZURE_LOCATION']
+    ENV_ID                       = $environmentId
+    URL_PROPERTY                 = "https://property.internal.$domain"
+    URL_ANALYTICS                = "https://analytics.internal.$domain"
+    URL_MARKETDATA               = "https://marketdata-api.internal.$domain"
+    GW_IDENTITY                  = "https://identity.internal.$domain/"
+    GW_PROPERTY                  = "https://property.internal.$domain/"
+    GW_ANALYTICS                 = "https://analytics.internal.$domain/"
+    GW_ALERTS                    = "https://alerts.internal.$domain/"
+    GW_NOTIFICATIONS             = "https://notifications.internal.$domain/"
+    SERVICEBUS_APPS_CONNECTION   = $appsConnection
     SERVICEBUS_SCALER_CONNECTION = $scalerConnection
 }
 foreach ($key in @(
@@ -89,8 +89,8 @@ function Publish-Resource {
     $rendered = Expand-Template -Path (Join-Path $PSScriptRoot "apps/$Name.yaml") -Values $values
     $temp = Join-Path ([System.IO.Path]::GetTempPath()) "inmodomain-$Name.yaml"
 
-    $listCommand = if ($Kind -eq 'job') { @('containerapp', 'job', 'list') } else { @('containerapp', 'list') }
-    $verb = if ($Kind -eq 'job') { @('containerapp', 'job') } else { @('containerapp') }
+    [string[]] $listCommand = if ($Kind -eq 'job') { 'containerapp', 'job', 'list' } else { 'containerapp', 'list' }
+    [string[]] $verb = if ($Kind -eq 'job') { 'containerapp', 'job' } else { 'containerapp' }
 
     $existing = Get-AzValue @listCommand --resource-group $script:ResourceGroup --query "[?name=='$Name'].name"
     $action = if ([string]::IsNullOrWhiteSpace($existing)) { 'create' } else { 'update' }

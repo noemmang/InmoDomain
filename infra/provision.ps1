@@ -130,7 +130,6 @@ if (-not ($remote -match 'github\.com[:/](?<repo>[^/]+/[^/]+?)(?:\.git)?$')) {
 }
 
 $repository = $Matches['repo']
-$subject = "repo:${repository}:ref:refs/heads/main"
 
 $appId = Get-AzValue ad app list --display-name $script:AppRegistrationName --query "[?displayName=='$($script:AppRegistrationName)'].appId | join(',', @)"
 if ([string]::IsNullOrWhiteSpace($appId)) {
@@ -140,16 +139,23 @@ if ([string]::IsNullOrWhiteSpace($appId)) {
 
 $servicePrincipalId = Get-AzValue ad sp show --id $appId --query id
 
-$existingCredential = Get-AzValue ad app federated-credential list --id $appId --query "[?name=='github-main'].name"
-if ([string]::IsNullOrWhiteSpace($existingCredential)) {
+# Crea una credencial federada para la rama main si todavía no existe.
+function Add-FederatedCredential {
+    param([string] $Name, [string] $Subject)
+
+    $existing = Get-AzValue ad app federated-credential list --id $appId --query "[?name=='$Name'].name"
+    if (-not [string]::IsNullOrWhiteSpace($existing)) {
+        return
+    }
+
     $credential = [ordered]@{
-        name      = 'github-main'
+        name      = $Name
         issuer    = 'https://token.actions.githubusercontent.com'
-        subject   = $subject
+        subject   = $Subject
         audiences = @('api://AzureADTokenExchange')
     }
 
-    $credentialFile = Join-Path ([System.IO.Path]::GetTempPath()) 'inmodomain-federated-credential.json'
+    $credentialFile = Join-Path ([System.IO.Path]::GetTempPath()) "inmodomain-$Name.json"
     try {
         [System.IO.File]::WriteAllText($credentialFile, ($credential | ConvertTo-Json), (New-Object System.Text.UTF8Encoding $false))
         Invoke-Az ad app federated-credential create --id $appId --parameters "@$credentialFile" | Out-Null
@@ -157,6 +163,22 @@ if ([string]::IsNullOrWhiteSpace($existingCredential)) {
     finally {
         Remove-Item -Path $credentialFile -Force -ErrorAction SilentlyContinue
     }
+}
+
+# GitHub presenta el subject con los identificadores numéricos del propietario y del repositorio;
+# se crea también la forma clásica por si el repositorio no los usa.
+$classicSubject = "repo:${repository}:ref:refs/heads/main"
+Add-FederatedCredential -Name 'github-main' -Subject $classicSubject
+
+$subject = $classicSubject
+try {
+    $repoInfo = Invoke-RestMethod -Uri "https://api.github.com/repos/$repository" -Headers @{ 'User-Agent' = 'inmodomain-provision' }
+    $owner, $name = $repository.Split('/')
+    $subject = "repo:$owner@$($repoInfo.owner.id)/$name@$($repoInfo.id):ref:refs/heads/main"
+    Add-FederatedCredential -Name 'github-main-id' -Subject $subject
+}
+catch {
+    Write-Warning "No se pudo consultar los identificadores del repositorio en la API de GitHub (¿repositorio privado?): $($_.Exception.Message)"
 }
 
 $existingAssignment = Get-AzValue role assignment list `

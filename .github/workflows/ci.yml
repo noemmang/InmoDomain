@@ -6,12 +6,14 @@ on:
     paths-ignore:
       - "docs/**"
       - "frontend/**"
+      - "infra/**"
       - "**/*.md"
   pull_request:
     branches: [main]
     paths-ignore:
       - "docs/**"
       - "frontend/**"
+      - "infra/**"
       - "**/*.md"
   workflow_dispatch:
 
@@ -156,3 +158,63 @@ jobs:
           provenance: false
           cache-from: type=gha,scope=${{ matrix.service }}
           cache-to: type=gha,mode=max,scope=${{ matrix.service }}
+
+  deploy:
+    name: Desplegar en Azure
+    needs: docker
+    # Solo en push a main y cuando el repositorio tiene configuradas las variables de Azure.
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.AZURE_CLIENT_ID != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      id-token: write
+      contents: read
+    concurrency:
+      group: deploy-azure
+      cancel-in-progress: false
+    env:
+      RESOURCE_GROUP: ${{ vars.AZURE_RESOURCE_GROUP }}
+    steps:
+      - name: Login en Azure (OIDC)
+        uses: azure/login@v3
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      # Actualiza solo la imagen: secretos, probes y reglas de escalado se conservan de la última configuración aplicada.
+      - name: Actualizar imágenes
+        shell: bash
+        run: |
+          set -euo pipefail
+          az config set extension.use_dynamic_install=yes_without_prompt
+          owner="${GITHUB_REPOSITORY_OWNER,,}"
+          tag="sha-${GITHUB_SHA::7}"
+
+          for service in gateway identity property analytics alerts notifications marketdata-api; do
+            echo "::group::$service"
+            az containerapp update \
+              --name "$service" \
+              --resource-group "$RESOURCE_GROUP" \
+              --image "ghcr.io/${owner}/inmodomain-${service}:${tag}" \
+              --output none
+            echo "::endgroup::"
+          done
+
+          echo "::group::import-job"
+          az containerapp job update \
+            --name import-job \
+            --resource-group "$RESOURCE_GROUP" \
+            --image "ghcr.io/${owner}/inmodomain-import-job:${tag}" \
+            --output none
+          echo "::endgroup::"
+
+      # Gateway -> Property -> Neon; con reintentos por el arranque desde cero de las réplicas.
+      - name: Comprobar el Gateway
+        shell: bash
+        run: |
+          set -euo pipefail
+          fqdn="$(az containerapp show --name gateway --resource-group "$RESOURCE_GROUP" --query properties.configuration.ingress.fqdn --output tsv)"
+          curl --fail --silent --show-error --retry 6 --retry-delay 10 --retry-all-errors --max-time 90 \
+            "https://${fqdn}/api/v1/provinces" --output /dev/null
+          echo "Gateway operativo en https://${fqdn}"

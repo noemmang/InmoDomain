@@ -4,5 +4,5 @@ namespace MarketData.ImportJob.Events;
 
 public interface IEventPublisher
 {
-    Task PublishImportedAsync(string topic, IReadOnlyList<ChangedPeriod> changes);
+    Task PublishImportedAsync(string queue, IReadOnlyList<ChangedPeriod> changes);
 }

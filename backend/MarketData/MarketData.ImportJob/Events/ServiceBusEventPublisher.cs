@@ -5,7 +5,7 @@ using Microsoft.Extensions.Configuration;
 
 namespace MarketData.ImportJob.Events;
 
-// Publica eventos de importacion en Azure Service Bus. El cliente y el sender de cada topic
+// Publica eventos de importacion en Azure Service Bus. El cliente y el sender de cada cola
 // se crean de forma perezosa en la primera publicacion, sin cachear fallos de creacion.
 public class ServiceBusEventPublisher : IEventPublisher, IAsyncDisposable
 {
@@ -21,21 +21,21 @@ public class ServiceBusEventPublisher : IEventPublisher, IAsyncDisposable
     }
 
     // Un evento por periodo con cambios, en orden cronologico.
-    public async Task PublishImportedAsync(string topic, IReadOnlyList<ChangedPeriod> changes)
+    public async Task PublishImportedAsync(string queue, IReadOnlyList<ChangedPeriod> changes)
     {
         if (changes.Count == 0)
         {
             return;
         }
 
-        var sender = GetSender(topic);
+        var sender = GetSender(queue);
 
         foreach (var change in changes.OrderBy(c => c.Period))
         {
             var importEvent = new ImportEvent
             {
                 EventId = Guid.NewGuid(),
-                EventType = topic,
+                EventType = queue,
                 OccurredAt = DateTimeOffset.UtcNow,
                 Period = change.Period,
                 ProvinceCodes = change.ProvinceCodes.ToList()
@@ -50,11 +50,11 @@ public class ServiceBusEventPublisher : IEventPublisher, IAsyncDisposable
         }
     }
 
-    private ServiceBusSender GetSender(string topic)
+    private ServiceBusSender GetSender(string queue)
     {
         lock (_lock)
         {
-            if (_senders.TryGetValue(topic, out var existing))
+            if (_senders.TryGetValue(queue, out var existing))
             {
                 return existing;
             }
@@ -70,8 +70,8 @@ public class ServiceBusEventPublisher : IEventPublisher, IAsyncDisposable
                 _client = new ServiceBusClient(connectionString);
             }
 
-            var sender = _client.CreateSender(topic);
-            _senders[topic] = sender;
+            var sender = _client.CreateSender(queue);
+            _senders[queue] = sender;
             return sender;
         }
     }

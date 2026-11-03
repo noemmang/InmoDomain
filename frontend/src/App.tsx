@@ -1,7 +1,7 @@
 import { Navigate, Route, Routes } from "react-router-dom";
-import { AppLayout } from "./components/AppLayout";
+import { AccountLayout } from "./components/AccountLayout";
 import { ProtectedRoute } from "./components/ProtectedRoute";
-import { PublicLayout } from "./components/PublicLayout";
+import { MainLayout } from "./components/MainLayout";
 import { AlertsPage } from "./pages/AlertsPage";
 import { ComparePage } from "./pages/ComparePage";
 import { ExplorePage } from "./pages/ExplorePage";
@@ -16,12 +16,16 @@ import { ProvincePage } from "./pages/ProvincePage";
 import { RegisterPage } from "./pages/RegisterPage";
 import { ResetPasswordPage } from "./pages/ResetPasswordPage";
 
-// Mapa de rutas: portada pública, pantallas de acceso, panel público y panel que exige sesión.
+// Mapa de rutas: páginas públicas (inicio, explorar, comparar), pantallas de acceso y zona de cuenta con sesión.
 export function App() {
     return (
         <Routes>
-            <Route element={<PublicLayout />}>
+            <Route element={<MainLayout />}>
                 <Route path="/" element={<LandingPage />} />
+                <Route path="/explorar" element={<ExplorePage />} />
+                <Route path="/provincia/:code" element={<ProvincePage />} />
+                <Route path="/comparar" element={<ComparePage />} />
+                <Route path="/panel" element={<Navigate to="/explorar" replace />} />
             </Route>
 
             <Route path="/login" element={<LoginPage />} />
@@ -29,17 +33,16 @@ export function App() {
             <Route path="/recuperar" element={<ForgotPasswordPage />} />
             <Route path="/reset-password" element={<ResetPasswordPage />} />
 
-            <Route element={<AppLayout />}>
-                <Route path="/explorar" element={<ExplorePage />} />
-                <Route path="/provincia/:code" element={<ProvincePage />} />
-                <Route path="/comparar" element={<ComparePage />} />
-                <Route element={<ProtectedRoute />}>
+            <Route element={<ProtectedRoute />}>
+                <Route element={<AccountLayout />}>
+                    <Route path="/perfil" element={<ProfilePage />} />
                     <Route path="/favoritos" element={<FavoritesPage />} />
                     <Route path="/alertas" element={<AlertsPage />} />
                     <Route path="/notificaciones" element={<NotificationsPage />} />
-                    <Route path="/perfil" element={<ProfilePage />} />
                 </Route>
-                <Route path="/panel" element={<Navigate to="/explorar" replace />} />
+            </Route>
+
+            <Route element={<MainLayout />}>
                 <Route path="*" element={<NotFoundPage />} />
             </Route>
         </Routes>

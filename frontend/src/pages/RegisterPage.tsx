@@ -22,7 +22,7 @@ export function RegisterPage() {
         setLoading(true);
         try {
             await register(name.trim(), email.trim(), password);
-            navigate("/explorar", { replace: true });
+            navigate("/perfil", { replace: true });
         } catch (reason) {
             setError(reason instanceof Error ? reason.message : "No se ha podido crear la cuenta.");
         } finally {

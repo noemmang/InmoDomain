@@ -16,7 +16,7 @@ interface AuthLayoutProps {
 export function AuthLayout({ title, subtitle, children, footer, redirectIfAuthenticated = true }: AuthLayoutProps) {
     const { status } = useAuth();
 
-    if (redirectIfAuthenticated && status === "authenticated") return <Navigate to="/explorar" replace />;
+    if (redirectIfAuthenticated && status === "authenticated") return <Navigate to="/perfil" replace />;
 
     return (
         <div className="auth-layout">

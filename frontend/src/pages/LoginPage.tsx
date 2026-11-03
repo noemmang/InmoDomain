@@ -10,7 +10,7 @@ export function LoginPage() {
     const { login } = useAuth();
     const navigate = useNavigate();
     const location = useLocation();
-    const redirectTo = (location.state as { from?: string } | null)?.from ?? "/explorar";
+    const redirectTo = (location.state as { from?: string } | null)?.from ?? "/perfil";
 
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");

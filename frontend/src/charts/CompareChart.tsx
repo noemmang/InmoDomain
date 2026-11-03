@@ -12,7 +12,7 @@ interface CompareChartProps {
 // Barras agrupadas: cada grupo es un índice y cada barra una provincia comparada.
 export function CompareChart({ entries, names, indexView }: CompareChartProps) {
     const metrics = [
-        { label: "Score", pick: (entry: CompareEntry) => entry.score },
+        { label: "Índice", pick: (entry: CompareEntry) => entry.score },
         { label: "Precio", pick: (entry: CompareEntry) => (indexView === "historical" ? entry.priceIndex : entry.priceIndexNationalRanking) },
         { label: "Actividad", pick: (entry: CompareEntry) => (indexView === "historical" ? entry.activityIndex : entry.activityIndexNationalRanking) },
     ];

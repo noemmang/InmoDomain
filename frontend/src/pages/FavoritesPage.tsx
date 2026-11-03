@@ -10,7 +10,7 @@ import { useLatestPeriod } from "../hooks/useLatestPeriod";
 import { useProvinces } from "../hooks/useProvinces";
 import { formatIndex, formatQuarter, formatSigned, scoreTone } from "../utils/format";
 
-// Provincias guardadas por el usuario, con su Property Score y tendencia del último trimestre.
+// Provincias guardadas por el usuario, con su Índice InmoDomain y tendencia del último trimestre.
 export function FavoritesPage() {
     const { favorites, loading, toggle } = useFavorites();
     const { byCode } = useProvinces();
@@ -57,7 +57,7 @@ export function FavoritesPage() {
                                 </Link>
                                 <div className="favorite-card__metrics">
                                     <div>
-                                        <span className="stat__label">Score</span>
+                                        <span className="stat__label">Índice</span>
                                         <span className={`score-pill score-pill--${scoreTone(entry?.score)}`}>{formatIndex(entry?.score)}</span>
                                     </div>
                                     <div>

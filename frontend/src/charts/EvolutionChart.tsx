@@ -18,13 +18,13 @@ export function EvolutionChart({ history, indexView, trendView }: EvolutionChart
         .sort((a, b) => a.period.localeCompare(b.period))
         .map((row) => ({
             label: formatQuarter(row.period),
-            Score: row.score,
+            "Índice": row.score,
             Precio: indexView === "historical" ? row.priceIndex : row.priceIndexNationalRanking,
             Actividad: indexView === "historical" ? row.activityIndex : row.activityIndexNationalRanking,
             Tendencia: trendView === "quarterly" ? row.priceTrendIndex : row.priceTrendIndexYearOverYear,
         }));
 
-    const series = ["Score", "Precio", "Actividad", "Tendencia"];
+    const series = ["Índice", "Precio", "Actividad", "Tendencia"];
 
     return (
         <div className="chart" role="img" aria-label="Evolución trimestral de los índices de la provincia">
@@ -40,7 +40,7 @@ export function EvolutionChart({ history, indexView, trendView }: EvolutionChart
                             type="monotone"
                             dataKey={name}
                             stroke={CHART_COLORS[index]}
-                            strokeWidth={name === "Score" ? 3 : 2}
+                            strokeWidth={name === "Índice" ? 3 : 2}
                             dot={{ r: 3, fill: CHART_COLORS[index], strokeWidth: 0 }}
                             activeDot={{ r: 5 }}
                             connectNulls

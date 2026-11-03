@@ -1,3 +1,4 @@
+import { SCORE_NAME } from "../utils/brand";
 import { ArrowDown, ArrowUp } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
@@ -23,7 +24,7 @@ interface Row {
     entry: CompareEntry | undefined;
 }
 
-// Panel principal: ranking nacional de provincias por Property Score en el último trimestre calculado.
+// Panel principal: ranking nacional de provincias por Índice InmoDomain en el último trimestre calculado.
 export function ExplorePage() {
     const provincesState = useProvinces();
     const periodState = useLatestPeriod();
@@ -126,12 +127,12 @@ export function ExplorePage() {
 
             <div className="stat-grid">
                 <Card className="stat">
-                    <span className="stat__label">Mejor Property Score</span>
+                    <span className="stat__label">Mejor {SCORE_NAME}</span>
                     <strong className="stat__value">{top[0].name}</strong>
                     <span className="stat__note">{formatIndex(top[0].entry!.score)} sobre 100</span>
                 </Card>
                 <Card className="stat">
-                    <span className="stat__label">Media nacional del score</span>
+                    <span className="stat__label">Media nacional del índice</span>
                     <strong className="stat__value">{formatIndex(average)}</strong>
                     <span className="stat__note">media de las provincias con datos</span>
                 </Card>
@@ -143,7 +144,7 @@ export function ExplorePage() {
             </div>
 
             <div className="grid-two">
-                <Card title="Top 10 por Property Score">
+                <Card title={`Top 10 por ${SCORE_NAME}`}>
                     <RankingChart items={top.slice(0, 10).map((row) => ({ name: row.name, score: row.entry!.score ?? 0 }))} />
                 </Card>
 
@@ -166,7 +167,7 @@ export function ExplorePage() {
                             <thead>
                                 <tr>
                                     {header("name", "Provincia")}
-                                    {header("score", "Score")}
+                                    {header("score", "Índice")}
                                     {header("price", "Precio")}
                                     {header("trend", "Tendencia")}
                                     {header("activity", "Actividad")}

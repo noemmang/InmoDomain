@@ -1,4 +1,5 @@
 import type { AlertCondition, AlertMetric } from "../api/types";
+import { SCORE_NAME } from "./brand";
 
 const MONTHS = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
 
@@ -45,7 +46,7 @@ export function formatSigned(value: number | null | undefined): string {
 }
 
 export const METRIC_LABELS: Record<AlertMetric, string> = {
-    property_score: "Property Score",
+    property_score: SCORE_NAME,
     indice_precio: "Índice de precio",
     indice_tendencia_precio: "Tendencia de precio",
     indice_actividad: "Índice de actividad",

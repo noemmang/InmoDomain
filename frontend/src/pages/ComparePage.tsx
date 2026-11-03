@@ -98,7 +98,7 @@ export function ComparePage() {
                                 <thead>
                                     <tr>
                                         <th scope="col">Provincia</th>
-                                        <th scope="col">Score</th>
+                                        <th scope="col">Índice</th>
                                         <th scope="col">Precio</th>
                                         <th scope="col">Tendencia</th>
                                         <th scope="col">Actividad</th>

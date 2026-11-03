@@ -1,3 +1,4 @@
+import { SCORE_NAME } from "../utils/brand";
 import { BellPlus } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
@@ -89,7 +90,7 @@ export function ProvincePage() {
             ) : (
                 <div className="province-summary">
                     <Card className="province-summary__score">
-                        <ScoreRing value={latest.score} label="Property Score" size={168} />
+                        <ScoreRing value={latest.score} label={SCORE_NAME} size={168} />
                     </Card>
                     <Card className="stat">
                         <span className="stat__label">Índice de precio</span>

@@ -60,7 +60,7 @@ export function HeroIllustration() {
                         strokeDasharray="289" strokeDashoffset="84" transform="rotate(-90 60 60)"
                     />
                 </svg>
-                <span className="hero-scene__card-label">Property Score</span>
+                <span className="hero-scene__card-label">Índice InmoDomain</span>
             </div>
 
             <div className="hero-scene__card hero-scene__card--bars">

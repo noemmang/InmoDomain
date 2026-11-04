@@ -54,6 +54,10 @@
     --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
     --duration-fast: 160ms;
     --duration-base: 240ms;
+    /* Barras de desplazamiento */
+    --scrollbar-size: 10px;
+    --scrollbar-thumb: var(--heat-2);
+    --scrollbar-thumb-hover: var(--heat-3);
     /* Medidas de la estructura */
     --sidebar-width: 232px;
     --content-width: 1200px;
@@ -128,6 +132,36 @@ ol {
 :focus-visible {
     outline: 2px solid var(--color-text);
     outline-offset: 2px;
+}
+
+/* Barras de desplazamiento: solo se ve el tramo actual, el resto es transparente */
+::-webkit-scrollbar {
+    width: var(--scrollbar-size);
+    height: var(--scrollbar-size);
+}
+
+::-webkit-scrollbar-track,
+::-webkit-scrollbar-corner {
+    background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+    border: 3px solid transparent;
+    border-radius: var(--radius-pill);
+    background: var(--scrollbar-thumb);
+    background-clip: content-box;
+}
+
+    ::-webkit-scrollbar-thumb:hover {
+        background: var(--scrollbar-thumb-hover);
+        background-clip: content-box;
+    }
+
+@supports not selector(::-webkit-scrollbar) {
+    * {
+        scrollbar-width: thin;
+        scrollbar-color: var(--scrollbar-thumb) transparent;
+    }
 }
 
 .visually-hidden {
@@ -636,10 +670,13 @@ ol {
     top: calc(100% + 8px);
     left: 0;
     right: 0;
+    max-height: 320px;
     padding: var(--space-2);
     border-radius: var(--radius-md);
     background: var(--color-surface-raised);
     box-shadow: var(--shadow-popover);
+    overflow-y: auto;
+    overscroll-behavior: contain;
     animation: rise var(--duration-base) var(--ease-out);
 }
 
@@ -1157,6 +1194,12 @@ ol {
     width: 24px;
     height: 24px;
     font-size: 0.65rem;
+}
+
+.avatar--fill {
+    width: 100%;
+    height: 100%;
+    font-size: 0.9rem;
 }
 
 .avatar--large {
@@ -1877,8 +1920,8 @@ ol {
 
 .site-header__dot {
     position: absolute;
-    top: 8px;
-    right: 8px;
+    top: 1px;
+    right: 1px;
     width: 10px;
     height: 10px;
     border-radius: var(--radius-pill);
@@ -1976,14 +2019,37 @@ ol {
     stroke: var(--color-bg);
 }
 
-.spain-map__province--h1 { fill: var(--heat-1); }
-.spain-map__province--h2 { fill: var(--heat-2); }
-.spain-map__province--h3 { fill: var(--heat-3); }
-.spain-map__province--h4 { fill: var(--heat-4); }
-.spain-map__province--h5 { fill: var(--heat-5); }
-.spain-map__province--up { fill: var(--color-positive); }
-.spain-map__province--down { fill: var(--color-negative); }
-.spain-map__province--dim { fill: var(--color-surface-hover); }
+.spain-map__province--h1 {
+    fill: var(--heat-1);
+}
+
+.spain-map__province--h2 {
+    fill: var(--heat-2);
+}
+
+.spain-map__province--h3 {
+    fill: var(--heat-3);
+}
+
+.spain-map__province--h4 {
+    fill: var(--heat-4);
+}
+
+.spain-map__province--h5 {
+    fill: var(--heat-5);
+}
+
+.spain-map__province--up {
+    fill: var(--color-positive);
+}
+
+.spain-map__province--down {
+    fill: var(--color-negative);
+}
+
+.spain-map__province--dim {
+    fill: var(--color-surface-hover);
+}
 
 .spain-map__dot {
     fill: var(--color-accent);
@@ -2001,13 +2067,27 @@ ol {
 }
 
 @keyframes map-in {
-    from { opacity: 0; transform: translateY(8px); }
-    to { opacity: 1; transform: none; }
+    from {
+        opacity: 0;
+        transform: translateY(8px);
+    }
+
+    to {
+        opacity: 1;
+        transform: none;
+    }
 }
 
 @keyframes map-ring {
-    from { opacity: 0.9; transform: scale(1); }
-    to { opacity: 0; transform: scale(4.2); }
+    from {
+        opacity: 0.9;
+        transform: scale(1);
+    }
+
+    to {
+        opacity: 0;
+        transform: scale(4.2);
+    }
 }
 
 .layer-list {
@@ -2088,8 +2168,13 @@ ol {
     text-transform: uppercase;
 }
 
-.movers__title--up { color: var(--color-positive); }
-.movers__title--down { color: var(--color-negative); }
+.movers__title--up {
+    color: var(--color-positive);
+}
+
+.movers__title--down {
+    color: var(--color-negative);
+}
 
 .movers__list {
     display: grid;

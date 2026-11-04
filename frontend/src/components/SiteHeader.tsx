@@ -46,7 +46,7 @@ export function SiteHeader() {
                         aria-label={authenticated ? "Mi perfil" : "Iniciar sesión"}
                         title={authenticated ? "Mi perfil" : "Iniciar sesión"}
                     >
-                        {authenticated && user ? <Avatar user={user} size="small" /> : <UserRound size={20} />}
+                        {authenticated && user ? <Avatar user={user} size="fill" /> : <UserRound size={20} />}
                         {authenticated && unreadCount > 0 && <span className="site-header__dot" aria-label={`${unreadCount} avisos sin leer`} />}
                     </NavLink>
                 </div>

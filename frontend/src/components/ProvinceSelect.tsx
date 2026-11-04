@@ -19,8 +19,7 @@ export function ProvinceSelect({ provinces, onSelect, placeholder = "Buscar prov
         const text = query.trim().toLowerCase();
         return provinces
             .filter((province) => !exclude.includes(province.provinceCode))
-            .filter((province) => !text || `${province.name} ${province.autonomousCommunity}`.toLowerCase().includes(text))
-            .slice(0, 8);
+            .filter((province) => !text || `${province.name} ${province.autonomousCommunity}`.toLowerCase().includes(text));
     }, [provinces, query, exclude]);
 
     // Cierra la lista al hacer clic fuera del componente.

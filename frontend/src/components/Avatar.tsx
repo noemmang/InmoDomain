@@ -3,7 +3,7 @@ import { initials } from "../utils/format";
 
 interface AvatarProps {
     user: Pick<UserProfile, "name" | "profilePhoto"> | null;
-    size?: "small" | "large";
+    size?: "small" | "large" | "fill";
 }
 
 // Avatar del usuario: muestra su foto de perfil si la tiene y, si no, sus iniciales.

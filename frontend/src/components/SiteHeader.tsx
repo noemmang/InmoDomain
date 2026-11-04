@@ -3,7 +3,7 @@ import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useNotifications } from "../context/NotificationsContext";
 import { useProvinces } from "../hooks/useProvinces";
-import { initials } from "../utils/format";
+import { Avatar } from "./Avatar";
 import { Logo } from "./Logo";
 import { ProvinceSelect } from "./ProvinceSelect";
 
@@ -46,7 +46,7 @@ export function SiteHeader() {
                         aria-label={authenticated ? "Mi perfil" : "Iniciar sesión"}
                         title={authenticated ? "Mi perfil" : "Iniciar sesión"}
                     >
-                        {authenticated && user ? <span className="avatar avatar--small">{initials(user.name)}</span> : <UserRound size={20} />}
+                        {authenticated && user ? <Avatar user={user} size="small" /> : <UserRound size={20} />}
                         {authenticated && unreadCount > 0 && <span className="site-header__dot" aria-label={`${unreadCount} avisos sin leer`} />}
                     </NavLink>
                 </div>

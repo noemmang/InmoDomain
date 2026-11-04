@@ -17,8 +17,9 @@ export const authApi = {
     resetPassword: (token: string, newPassword: string) =>
         request<void>("/api/v1/auth/reset-password", { method: "POST", body: { token, newPassword } }),
     me: () => request<UserProfile>("/api/v1/auth/me", { auth: "required" }),
-    updateMe: (name: string, email: string) =>
-        request<UserProfile>("/api/v1/auth/me", { method: "PUT", body: { name, email }, auth: "required" }),
+    // profilePhoto: data URL en base64, o null para eliminar la foto actual.
+    updateMe: (name: string, email: string, profilePhoto: string | null) =>
+        request<UserProfile>("/api/v1/auth/me", { method: "PUT", body: { name, email, profilePhoto }, auth: "required" }),
     changePassword: (currentPassword: string, newPassword: string) =>
         request<void>("/api/v1/auth/me/password", {
             method: "PUT", body: { currentPassword, newPassword }, auth: "required",

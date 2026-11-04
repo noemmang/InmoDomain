@@ -12,6 +12,8 @@ export interface UserProfile {
     name: string;
     email: string;
     registeredAt: string;
+    // Foto de perfil como data URL en base64; null si el usuario no ha subido ninguna.
+    profilePhoto: string | null;
 }
 
 export interface Province {

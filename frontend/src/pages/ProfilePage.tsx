@@ -1,12 +1,13 @@
-import { LogOut } from "lucide-react";
-import { useState, type FormEvent } from "react";
+import { Camera, LogOut, Trash2 } from "lucide-react";
+import { useRef, useState, type ChangeEvent, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { authApi } from "../api/endpoints";
+import { Avatar } from "../components/Avatar";
 import { Button } from "../components/Button";
 import { Card } from "../components/Card";
 import { Field, FormMessage } from "../components/Field";
 import { useAuth } from "../context/AuthContext";
-import { initials } from "../utils/format";
+import { fileToAvatarDataUrl } from "../utils/image";
 
 // Perfil del usuario: datos personales, cambio de contraseña y cierre de sesión.
 export function ProfilePage() {
@@ -15,6 +16,9 @@ export function ProfilePage() {
 
     const [name, setName] = useState(user?.name ?? "");
     const [email, setEmail] = useState(user?.email ?? "");
+    // Foto en edición (data URL base64). Solo se guarda al pulsar "Guardar cambios".
+    const [photo, setPhoto] = useState<string | null>(user?.profilePhoto ?? null);
+    const photoInput = useRef<HTMLInputElement>(null);
     const [profileMessage, setProfileMessage] = useState<{ kind: "error" | "success"; text: string } | null>(null);
     const [savingProfile, setSavingProfile] = useState(false);
 
@@ -23,12 +27,26 @@ export function ProfilePage() {
     const [passwordMessage, setPasswordMessage] = useState<{ kind: "error" | "success"; text: string } | null>(null);
     const [savingPassword, setSavingPassword] = useState(false);
 
+    async function handlePhotoChange(event: ChangeEvent<HTMLInputElement>) {
+        const file = event.target.files?.[0];
+        // Se limpia el input para poder volver a elegir el mismo archivo.
+        event.target.value = "";
+        if (!file) return;
+
+        setProfileMessage(null);
+        try {
+            setPhoto(await fileToAvatarDataUrl(file));
+        } catch (reason) {
+            setProfileMessage({ kind: "error", text: reason instanceof Error ? reason.message : "No se ha podido cargar la imagen." });
+        }
+    }
+
     async function saveProfile(event: FormEvent) {
         event.preventDefault();
         setProfileMessage(null);
         setSavingProfile(true);
         try {
-            setUser(await authApi.updateMe(name.trim(), email.trim()));
+            setUser(await authApi.updateMe(name.trim(), email.trim(), photo));
             setProfileMessage({ kind: "success", text: "Datos actualizados." });
         } catch (reason) {
             setProfileMessage({ kind: "error", text: reason instanceof Error ? reason.message : "No se han podido guardar los datos." });
@@ -67,7 +85,7 @@ export function ProfilePage() {
         <div className="page">
             <header className="page__header">
                 <div className="profile-header">
-                    <span className="avatar avatar--large">{initials(user?.name ?? "")}</span>
+                    <Avatar user={user} size="large" />
                     <div>
                         <h1 className="page__title">{user?.name}</h1>
                         <p className="page__subtitle">{user?.email}</p>
@@ -79,6 +97,27 @@ export function ProfilePage() {
             <div className="grid-two grid-two--even">
                 <Card title="Datos personales">
                     <form className="form" onSubmit={saveProfile}>
+                        <div className="profile-photo">
+                            <Avatar user={{ name: name || user?.name || "", profilePhoto: photo }} size="large" />
+                            <div className="profile-photo__actions">
+                                <input
+                                    ref={photoInput}
+                                    className="profile-photo__input"
+                                    type="file"
+                                    accept="image/png,image/jpeg,image/webp"
+                                    aria-label="Elegir foto de perfil"
+                                    onChange={handlePhotoChange}
+                                />
+                                <Button type="button" variant="secondary" small onClick={() => photoInput.current?.click()}>
+                                    <Camera size={16} /> {photo ? "Cambiar foto" : "Subir foto"}
+                                </Button>
+                                {photo && (
+                                    <Button type="button" variant="ghost" small onClick={() => setPhoto(null)}>
+                                        <Trash2 size={16} /> Quitar
+                                    </Button>
+                                )}
+                            </div>
+                        </div>
                         <Field label="Nombre" required maxLength={100} value={name} onChange={(event) => setName(event.target.value)} />
                         <Field label="Correo electrónico" type="email" required value={email} onChange={(event) => setEmail(event.target.value)} />
                         {profileMessage && <FormMessage kind={profileMessage.kind}>{profileMessage.text}</FormMessage>}

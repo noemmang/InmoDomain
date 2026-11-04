@@ -17,7 +17,7 @@ namespace Identity.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "10.0.12")
+                .HasAnnotation("ProductVersion", "10.0.14")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -92,6 +92,10 @@ namespace Identity.Migrations
                     b.Property<string>("PasswordHash")
                         .HasColumnType("text")
                         .HasColumnName("password_hash");
+
+                    b.Property<string>("ProfilePhoto")
+                        .HasColumnType("text")
+                        .HasColumnName("foto_perfil");
 
                     b.Property<DateTime?>("RecoveryTokenExpiresAt")
                         .HasColumnType("timestamp with time zone")

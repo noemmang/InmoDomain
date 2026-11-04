@@ -27,6 +27,7 @@ public class IdentityDbContext : DbContext
             entity.Property(u => u.LastAccessAt).HasColumnName("fecha_ultimo_acceso").IsRequired();
             entity.Property(u => u.RecoveryTokenHash).HasColumnName("token_recuperacion").HasMaxLength(64);
             entity.Property(u => u.RecoveryTokenExpiresAt).HasColumnName("token_recuperacion_expira");
+            entity.Property(u => u.ProfilePhoto).HasColumnName("foto_perfil");
 
             entity.HasIndex(u => u.Email).IsUnique();
 

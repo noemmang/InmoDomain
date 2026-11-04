@@ -184,6 +184,7 @@ public class AuthService : IAuthService
 
         user.Name = dto.Name;
         user.Email = email;
+        user.ProfilePhoto = string.IsNullOrWhiteSpace(dto.ProfilePhoto) ? null : dto.ProfilePhoto;
         await _userRepository.UpdateAsync(user);
 
         return Result<UserProfileDto>.Success(ToProfileDto(user));
@@ -253,7 +254,8 @@ public class AuthService : IAuthService
         Id = user.Id,
         Name = user.Name,
         Email = user.Email,
-        RegisteredAt = user.RegisteredAt
+        RegisteredAt = user.RegisteredAt,
+        ProfilePhoto = user.ProfilePhoto
     };
 
     private static string NormalizeEmail(string email) => email.Trim().ToLowerInvariant();

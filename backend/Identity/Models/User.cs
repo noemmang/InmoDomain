@@ -11,4 +11,7 @@ public class User
     public DateTime LastAccessAt { get; set; }
     public string? RecoveryTokenHash { get; set; }
     public DateTime? RecoveryTokenExpiresAt { get; set; }
+
+    // Foto de perfil como data URL en base64 (p. ej. "data:image/jpeg;base64,..."). Null si no hay foto.
+    public string? ProfilePhoto { get; set; }
 }

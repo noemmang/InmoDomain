@@ -25,4 +25,11 @@ public class PropertyClient : IPropertyClient
 
         return await response.Content.ReadFromJsonAsync<List<FavoriteDto>>(SerializerOptions) ?? [];
     }
+
+    // Ruta pública de Property: devuelve los códigos INE de todas las provincias.
+    public async Task<IReadOnlyList<string>> GetProvinceCodesAsync()
+    {
+        var provinces = await _httpClient.GetFromJsonAsync<List<ProvinceCodeDto>>("api/v1/provinces", SerializerOptions) ?? [];
+        return provinces.Select(p => p.ProvinceCode).ToList();
+    }
 }

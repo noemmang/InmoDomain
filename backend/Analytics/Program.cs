@@ -47,6 +47,7 @@ builder.Services.AddScoped<IProvinceAnalyticsService, ProvinceAnalyticsService>(
 builder.Services.AddScoped<ICompareService, CompareService>();
 builder.Services.AddScoped<IMetricValueService, MetricValueService>();
 builder.Services.AddScoped<IAnalyticsCalculationService, AnalyticsCalculationService>();
+builder.Services.AddScoped<IRangeRecalculationService, RangeRecalculationService>();
 
 builder.Services.AddHttpClient<IMarketDataClient, MarketDataClient>(client =>
 {

@@ -42,6 +42,8 @@ export const analyticsApi = {
         const query = trendQuarters ? `?trendQuarters=${trendQuarters}` : "";
         return request<ProvinceAnalytics>(`/api/v1/provinces/${code}/analytics${query}`, { auth: "optional" });
     },
+    // Ficha sin token: el panel pide las 52 provincias y no necesita saber cuáles son favoritas.
+    provinceMarket: (code: string) => request<ProvinceAnalytics>(`/api/v1/provinces/${code}/analytics`),
     compare: (codes: string[], period: string) =>
         request<CompareEntry[]>(`/api/v1/analytics/compare?provinceCodes=${codes.join(",")}&period=${period}`),
 };

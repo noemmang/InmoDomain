@@ -17,8 +17,8 @@ properties:
       - name: gateway
         image: ${IMAGE}
         resources:
-          cpu: 0.25
-          memory: 0.5Gi
+          cpu: 0.5
+          memory: 1Gi
         env:
           - name: Jwt__PublicKey
             secretRef: jwt-public-key
@@ -36,6 +36,8 @@ properties:
             value: ${GW_ALERTS}
           - name: ReverseProxy__Clusters__notifications__Destinations__notifications__Address
             value: ${GW_NOTIFICATIONS}
+          - name: Warmup__ExtraUrls__0
+            value: ${URL_MARKETDATA}
         probes:
           - type: Liveness
             httpGet:

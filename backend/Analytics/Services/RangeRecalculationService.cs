@@ -1,4 +1,6 @@
+using Analytics.Integrations.MarketData;
 using Analytics.Integrations.Property;
+using Analytics.Repositories;
 
 namespace Analytics.Services;
 
@@ -7,9 +9,11 @@ public class RangeRecalculationService : IRangeRecalculationService
     private readonly IAnalyticsCalculationService _calculationService;
     private readonly IPropertyClient _propertyClient;
 
-    public RangeRecalculationService(IAnalyticsCalculationService calculationService, IPropertyClient propertyClient)
+    // El cálculo usa un cliente con memoria: cada serie de Market Data se pide una vez por provincia y no una vez por trimestre.
+    public RangeRecalculationService(
+        IPropertyScoreRepository propertyScoreRepository, IMarketDataClient marketDataClient, IPropertyClient propertyClient)
     {
-        _calculationService = calculationService;
+        _calculationService = new AnalyticsCalculationService(propertyScoreRepository, new MemoizedMarketDataClient(marketDataClient));
         _propertyClient = propertyClient;
     }
 

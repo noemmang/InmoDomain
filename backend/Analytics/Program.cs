@@ -34,6 +34,9 @@ var validationKey = new RsaSecurityKey(publicRsa);
 
 builder.Services.AddControllers();
 
+// Las fichas de provincia (el panel de Explorar pide las 52) son JSON repetitivo y comprimen muy bien.
+builder.Services.AddResponseCompression(options => options.EnableForHttps = true);
+
 // Sonda de salud sin dependencias externas: no despierta Neon ni Service Bus.
 builder.Services.AddHealthChecks();
 builder.Services.AddEndpointsApiExplorer();
@@ -101,6 +104,8 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
 }
+
+app.UseResponseCompression();
 
 app.UseAuthentication();
 

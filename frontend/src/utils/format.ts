@@ -39,6 +39,20 @@ export function formatIndex(value: number | null | undefined): string {
     return value == null ? "—" : value.toLocaleString("es-ES", { maximumFractionDigits: 1, minimumFractionDigits: 1 });
 }
 
+// Número con los decimales indicados y, si se pide, signo explícito. Un valor que redondea a cero no lleva signo.
+export function formatDecimal(value: number | null | undefined, decimals = 1, signed = false): string {
+    if (value == null) return "—";
+    const rounded = Number(value.toFixed(decimals));
+    const text = Math.abs(rounded).toLocaleString("es-ES", { maximumFractionDigits: decimals, minimumFractionDigits: decimals });
+    if (rounded < 0) return `−${text}`;
+    return signed && rounded > 0 ? `+${text}` : text;
+}
+
+// Porcentaje con un decimal: "+4,2 %" si lleva signo, "12,4 %" si no.
+export function formatPercent(value: number | null | undefined, signed = false): string {
+    return value == null ? "—" : `${formatDecimal(value, 1, signed)}\u00A0%`;
+}
+
 export function formatSigned(value: number | null | undefined): string {
     if (value == null) return "—";
     const text = Math.abs(value).toLocaleString("es-ES", { maximumFractionDigits: 1, minimumFractionDigits: 1 });

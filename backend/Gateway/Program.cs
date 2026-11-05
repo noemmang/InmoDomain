@@ -103,7 +103,20 @@ builder.Services.AddRateLimiter(options =>
                 Window = TimeSpan.FromSeconds(authWindowSeconds),
                 QueueLimit = 0
             }));
+
+    // Aviso de calentamiento: lo envía el frontend una vez por carga de página.
+    options.AddPolicy("warmup", httpContext =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 6,
+                Window = TimeSpan.FromSeconds(60),
+                QueueLimit = 0
+            }));
 });
+
+builder.Services.AddHttpClient("warmup", client => client.Timeout = TimeSpan.FromSeconds(90));
 
 if (forwardedHeadersEnabled)
 {
@@ -140,6 +153,41 @@ app.UseAuthorization();
 
 // Sonda de salud propia del Gateway: ninguna ruta de YARP reenvía /health a los servicios.
 app.MapHealthChecks("/health");
+
+// Despierta a la vez todos los servicios que están a cero réplicas: responde enseguida y sigue en segundo plano.
+var warmupUrls = BuildWarmupUrls(app.Configuration);
+app.MapGet("/warmup", (IHttpClientFactory clientFactory, ILogger<Program> logger) =>
+{
+    _ = Task.WhenAll(warmupUrls.Select(async url =>
+    {
+        try
+        {
+            using var response = await clientFactory.CreateClient("warmup").GetAsync(url);
+        }
+        catch (Exception exception)
+        {
+            logger.LogWarning("Calentamiento sin respuesta de {Url}: {Message}", url, exception.Message);
+        }
+    }));
+
+    return Results.Accepted();
+}).RequireRateLimiting("warmup");
+
 app.MapReverseProxy();
 
 app.Run();
+
+// Direcciones de salud de los servicios: los destinos de los clusters del proxy más las extra (Market Data no pasa por el Gateway).
+static List<string> BuildWarmupUrls(IConfiguration configuration)
+{
+    var addresses = configuration.GetSection("ReverseProxy:Clusters").GetChildren()
+        .SelectMany(cluster => cluster.GetSection("Destinations").GetChildren())
+        .Select(destination => destination["Address"])
+        .Concat(configuration.GetSection("Warmup:ExtraUrls").Get<string[]>() ?? []);
+
+    return addresses
+        .Where(address => !string.IsNullOrWhiteSpace(address))
+        .Select(address => $"{address!.TrimEnd('/')}/health")
+        .Distinct()
+        .ToList();
+}

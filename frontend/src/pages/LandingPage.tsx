@@ -14,13 +14,13 @@ import { formatIndex, formatQuarter, formatSigned } from "../utils/format";
 
 const FACTS = [
     { value: "52", label: "provincias analizadas" },
-    { value: "2", label: "fuentes oficiales: INE y MIVAU" },
+    { value: "3", label: "fuentes oficiales: INE, MIVAU e ISTAC" },
     { value: "1 vez/día", label: "revisión de datos nuevos" },
     { value: "0 €", label: "para usar la plataforma" },
 ];
 
 const STEPS = [
-    { title: "Importamos datos oficiales", text: "Compraventas del INE y precios tasados del MIVAU, siempre desde la fuente original." },
+    { title: "Importamos datos oficiales", text: "Compraventas del INE, precios tasados del MIVAU y obra iniciada y terminada del MIVAU a través del ISTAC, siempre desde la fuente oficial." },
     { title: "Calculamos los índices", text: `Cada dato nuevo recalcula percentiles, tendencias y el ${SCORE_NAME} de cada provincia.` },
     { title: "Tú exploras y decides", text: "Compara provincias, guarda favoritas y crea alertas con los umbrales que te interesen." },
 ];
@@ -95,7 +95,7 @@ export function LandingPage() {
             <section className="hero">
                 <div className="hero__inner">
                     <div className="hero__copy">
-                        <span className="pill">Datos oficiales del INE y el MIVAU</span>
+                        <span className="pill">Datos oficiales del INE, el MIVAU y el ISTAC</span>
                         <h1 className="hero__title">Entiende el mercado inmobiliario de cada provincia</h1>
                         <p className="hero__text">
                             InmoDomain convierte estadísticas oficiales en índices claros: precio, tendencia y actividad. Explora,

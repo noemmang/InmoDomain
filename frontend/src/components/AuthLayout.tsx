@@ -24,7 +24,7 @@ export function AuthLayout({ title, subtitle, children, footer, redirectIfAuthen
                 <Logo />
                 <h2 className="auth-layout__claim">El mercado inmobiliario, provincia a provincia.</h2>
                 <p className="auth-layout__text">
-                    Índices propios, tendencias y alertas construidos con datos oficiales del INE y del MIVAU.
+                    Índices propios, tendencias y alertas construidos con datos oficiales del INE, del MIVAU y del ISTAC.
                 </p>
             </div>
             <div className="auth-layout__form">

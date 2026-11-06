@@ -19,7 +19,7 @@ export function MainLayout() {
                     <div className="public-footer__inner">
                         <Logo />
                         <p className="public-footer__text">
-                            Proyecto educativo de análisis del mercado inmobiliario español. Datos oficiales del INE y del MIVAU.
+                            Proyecto educativo de análisis del mercado inmobiliario español. Datos oficiales del INE, del MIVAU y del ISTAC.
                         </p>
                         <nav className="public-footer__links" aria-label="Pie de página">
                             <Link to="/explorar">Explorar</Link>

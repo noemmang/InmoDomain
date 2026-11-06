@@ -11,6 +11,7 @@ public class MarketDataDbContext : DbContext
 
     public DbSet<HousingSale> HousingSales => Set<HousingSale>();
     public DbSet<AppraisedValue> AppraisedValues => Set<AppraisedValue>();
+    public DbSet<ConstructionActivity> ConstructionActivities => Set<ConstructionActivity>();
     public DbSet<CacheEntry> CacheEntries => Set<CacheEntry>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -39,6 +40,25 @@ public class MarketDataDbContext : DbContext
             entity.Property(e => e.PricePerSquareMeter).HasColumnName("precio_m2").HasColumnType("decimal(10,2)");
             entity.HasIndex(e => new { e.ProvinceCode, e.Period, e.Age }).IsUnique();
             entity.ToTable(t => t.HasCheckConstraint("ck_valores_tasados_antiguedad", "antiguedad_vivienda IN ('<=5', '>5')"));
+        });
+
+        modelBuilder.Entity<ConstructionActivity>(entity =>
+        {
+            entity.ToTable("construccion_vivienda");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.ProvinceCode).HasColumnName("codigo_provincia");
+            entity.Property(e => e.Period).HasColumnName("periodo").HasColumnType("date");
+            entity.Property(e => e.Phase).HasColumnName("fase");
+            entity.Property(e => e.Regime).HasColumnName("regimen");
+            entity.Property(e => e.DwellingsCount).HasColumnName("numero_viviendas");
+            entity.Property(e => e.IsProvisional).HasColumnName("es_provisional");
+            entity.HasIndex(e => new { e.ProvinceCode, e.Period, e.Phase, e.Regime }).IsUnique();
+            entity.ToTable(t =>
+            {
+                t.HasCheckConstraint("ck_construccion_fase", "fase IN ('iniciada', 'terminada')");
+                t.HasCheckConstraint("ck_construccion_regimen", "regimen IN ('libre', 'protegida')");
+            });
         });
 
         modelBuilder.Entity<CacheEntry>(entity =>

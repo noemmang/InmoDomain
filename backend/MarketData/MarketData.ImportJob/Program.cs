@@ -3,6 +3,7 @@ using MarketData.Data;
 using MarketData.ImportJob.Events;
 using MarketData.ImportJob.Import;
 using MarketData.ImportJob.Integrations.Ine;
+using MarketData.ImportJob.Integrations.Istac;
 using MarketData.ImportJob.Integrations.Mivau;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -49,10 +50,30 @@ builder.Services.AddHttpClient<IIneApiClient, IneApiClient>(client =>
     .AddResilienceHandler("ine-retry-timeout", AddRetryAndTimeout);
 
 builder.Services.AddSingleton<IMivauFileParser, MivauFileParser>();
+builder.Services.AddSingleton<IIstacConstructionFileParser, IstacConstructionFileParser>();
 
 builder.Services.AddScoped<HousingSaleImportRunner>();
 builder.Services.AddHttpClient<AppraisedValueImportRunner>()
     .AddResilienceHandler("mivau-retry-timeout", AddRetryAndTimeout);
+
+// El .xlsx del ISTAC pesa ~5 MB y lo sirve un servidor canario: el timeout de 10 s por intento de
+// AddRetryAndTimeout se queda corto, asi que lleva su propio pipeline con 60 s.
+builder.Services.AddHttpClient<ConstructionImportRunner>()
+    .AddResilienceHandler("istac-retry-timeout", pipeline =>
+    {
+        pipeline.AddRetry(new HttpRetryStrategyOptions
+        {
+            MaxRetryAttempts = 3,
+            BackoffType = DelayBackoffType.Exponential,
+            UseJitter = true,
+            Delay = TimeSpan.FromSeconds(2)
+        });
+
+        pipeline.AddTimeout(new HttpTimeoutStrategyOptions
+        {
+            Timeout = TimeSpan.FromSeconds(60)
+        });
+    });
 
 builder.Services.AddSingleton<IEventPublisher, ServiceBusEventPublisher>();
 
@@ -106,7 +127,17 @@ var appraisedValuesOk = await RunStageAsync("precios", async () =>
     logger.LogInformation("Precios: {Count} periodos con cambios publicados.", changes.Count);
 });
 
-if (housingSalesOk && appraisedValuesOk)
+// La construccion (ISTAC) solo se importa y se guarda: ningun indice de Analytics la usa todavia,
+// asi que no publica evento de Service Bus.
+var constructionOk = await RunStageAsync("construccion", async () =>
+{
+    var runner = scope.ServiceProvider.GetRequiredService<ConstructionImportRunner>();
+    var changes = await runner.RunAsync();
+
+    logger.LogInformation("Construccion: {Count} periodos con cambios.", changes.Count);
+});
+
+if (housingSalesOk && appraisedValuesOk && constructionOk)
 {
     logger.LogInformation("ImportJob completado correctamente.");
 }

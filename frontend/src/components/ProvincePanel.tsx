@@ -1,7 +1,7 @@
 import { SCORE_NAME } from "../utils/brand";
 import { X } from "lucide-react";
 import { Link } from "react-router-dom";
-import { formatNumber, formatPercent, formatPrice, formatIndex, formatQuarter, scoreTone } from "../utils/format";
+import { formatDecimal, formatNumber, formatPercent, formatPrice, formatIndex, formatQuarter, scoreTone } from "../utils/format";
 import { formatMetric, metricOf, type MapMetric, type MarketRow } from "../utils/market";
 import { ButtonLink } from "./Button";
 import { Card } from "./Card";
@@ -15,11 +15,14 @@ interface ProvincePanelProps {
     rank: number | null;
     ranked: number;
     medianPrice: number | null;
+    // Cifras de obra (pueden ser de un trimestre anterior al del mapa, porque llegan con más retraso) y su trimestre.
+    construction: MarketRow | null;
+    constructionPeriod: string | null;
     onClose: () => void;
 }
 
-// Resumen de la provincia seleccionada en el mapa: cifras del trimestre, posición y accesos a ficha y comparador.
-export function ProvincePanel({ row, period, metric, rank, ranked, medianPrice, onClose }: ProvincePanelProps) {
+// Resumen de la provincia seleccionada en el mapa: cifras del trimestre y de obra, posición y accesos a ficha y comparador.
+export function ProvincePanel({ row, period, metric, rank, ranked, medianPrice, construction, constructionPeriod, onClose }: ProvincePanelProps) {
     const definition = metricOf(metric);
     const priceGap = row.price != null && medianPrice ? (row.price / medianPrice - 1) * 100 : null;
 
@@ -66,7 +69,29 @@ export function ProvincePanel({ row, period, metric, rank, ranked, medianPrice, 
                     <dt>Vivienda nueva</dt>
                     <dd>{formatPercent(row.newShare)}</dd>
                 </div>
+                <div>
+                    <dt>Obra iniciada</dt>
+                    <dd>{construction?.started == null ? "—" : formatNumber(construction.started)}</dd>
+                </div>
+                <div>
+                    <dt>Por 10.000 hab.</dt>
+                    <dd>{formatMetric(metricOf("startedRate"), construction?.startedRate, false)}</dd>
+                </div>
+                <div>
+                    <dt>Obra terminada</dt>
+                    <dd>{construction?.completed == null ? "—" : formatNumber(construction.completed)}</dd>
+                </div>
+                <div>
+                    <dt>Obra protegida</dt>
+                    <dd>{formatPercent(construction?.protectedShare)}</dd>
+                </div>
             </dl>
+
+            {constructionPeriod && construction?.started != null && (
+                <p className="province-panel__note">
+                    La obra es del {formatQuarter(constructionPeriod)}: {formatDecimal(construction.supplyRatio, 0)} viviendas iniciadas por cada 100 compraventas.
+                </p>
+            )}
 
             {priceGap != null && (
                 <p className="province-panel__note">

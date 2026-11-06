@@ -3,10 +3,13 @@ import { BellPlus } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import { analyticsApi } from "../api/endpoints";
+import type { ConstructionPhase } from "../api/types";
 import { ActivityHeatmap } from "../charts/ActivityHeatmap";
+import { ConstructionChart } from "../charts/ConstructionChart";
 import { EvolutionChart, type IndexView, type TrendView } from "../charts/EvolutionChart";
 import { PriceChart } from "../charts/PriceChart";
 import { SalesChart } from "../charts/SalesChart";
+import { SupplyDemandChart } from "../charts/SupplyDemandChart";
 import { ButtonLink } from "../components/Button";
 import { Card } from "../components/Card";
 import { FavoriteButton } from "../components/FavoriteButton";
@@ -15,15 +18,17 @@ import { SegmentedControl } from "../components/SegmentedControl";
 import { EmptyState, ErrorState, LoadingState } from "../components/StateViews";
 import { useAsync } from "../hooks/useAsync";
 import { useProvinces } from "../hooks/useProvinces";
-import { formatIndex, formatNumber, formatPrice, formatQuarter, formatSigned } from "../utils/format";
+import { formatDecimal, formatIndex, formatMonth, formatNumber, formatPercent, formatPrice, formatQuarter, formatSigned } from "../utils/format";
+import { buildSeries, computeRow, latestConstructionQuarter } from "../utils/market";
 
-// Ficha de una provincia: puntuación actual, índices, evolución, precio, compraventas y mapa de calor.
+// Ficha de una provincia: puntuación actual, índices, evolución, precio, compraventas, obra y mapa de calor.
 export function ProvincePage() {
     const { code = "" } = useParams();
     const { byCode, loading: provincesLoading } = useProvinces();
     const [indexView, setIndexView] = useState<IndexView>("historical");
     const [trendView, setTrendView] = useState<TrendView>("quarterly");
     const [customQuarters, setCustomQuarters] = useState(4);
+    const [phase, setPhase] = useState<ConstructionPhase>("iniciada");
 
     const province = byCode.get(code);
     const state = useAsync(() => analyticsApi.province(code, customQuarters), [code, customQuarters]);
@@ -38,6 +43,20 @@ export function ProvincePage() {
         const prices = values.filter((value) => value.period === lastPeriod).map((value) => value.pricePerSquareMeter);
         return prices.length ? prices.reduce((sum, price) => sum + price, 0) / prices.length : null;
     }, [analytics]);
+
+    // Obra del último trimestre con dato, con su cociente frente a las compraventas del mismo trimestre.
+    const construction = useMemo(() => {
+        if (!province || !analytics) return null;
+        const series = buildSeries(province, analytics);
+        const period = latestConstructionQuarter(series);
+        return period ? { period, row: computeRow(series, period) } : null;
+    }, [province, analytics]);
+
+    // Primer mes con cifra provisional: a partir de él el ISTAC puede revisar los datos.
+    const provisionalSince = useMemo(
+        () => (analytics?.construction ?? []).filter((record) => record.isProvisional).map((record) => record.period).sort().at(0),
+        [analytics],
+    );
 
     if (provincesLoading || (state.loading && !analytics)) {
         return <div className="page"><LoadingState slow={state.slow} label="Cargando la ficha" /></div>;
@@ -151,6 +170,65 @@ export function ProvincePage() {
                     {analytics.propertySales.length > 0 ? <SalesChart sales={analytics.propertySales} /> : <EmptyState title="Sin compraventas" text="El INE no ha publicado datos para esta provincia." />}
                 </Card>
             </div>
+
+            <h2 className="page__section-title">{construction ? `Obra de vivienda · ${formatQuarter(construction.period)}` : "Obra de vivienda"}</h2>
+            {construction ? (
+                <div className="stat-grid stat-grid--four">
+                    <Card className="stat">
+                        <span className="stat__label">Viviendas iniciadas</span>
+                        <strong className="stat__value">{construction.row.started == null ? "—" : formatNumber(construction.row.started)}</strong>
+                        <span className="stat__note">
+                            {formatDecimal(construction.row.startedRate)} por 10.000 hab.
+                            {construction.row.startedChange != null ? ` · ${formatPercent(construction.row.startedChange, true)} anual` : ""}
+                        </span>
+                    </Card>
+                    <Card className="stat">
+                        <span className="stat__label">Obra protegida</span>
+                        <strong className="stat__value">{formatPercent(construction.row.protectedShare)}</strong>
+                        <span className="stat__note">
+                            {construction.row.startedProtected == null ? "sin dato" : `${formatNumber(construction.row.startedProtected)} viviendas protegidas iniciadas`}
+                        </span>
+                    </Card>
+                    <Card className="stat">
+                        <span className="stat__label">Viviendas terminadas</span>
+                        <strong className="stat__value">{construction.row.completed == null ? "—" : formatNumber(construction.row.completed)}</strong>
+                        <span className="stat__note">{formatDecimal(construction.row.completedRate)} por 10.000 hab.</span>
+                    </Card>
+                    <Card className="stat">
+                        <span className="stat__label">Obra frente a demanda</span>
+                        <strong className="stat__value">{construction.row.supplyRatio == null ? "—" : `${formatDecimal(construction.row.supplyRatio, 0)} por 100`}</strong>
+                        <span className="stat__note">viviendas iniciadas por cada 100 compraventas</span>
+                    </Card>
+                </div>
+            ) : (
+                <Card><EmptyState title="Sin obra" text="El ISTAC no ha publicado datos de construcción para esta provincia." /></Card>
+            )}
+
+            {(analytics.construction ?? []).length > 0 && (
+                <div className="grid-two grid-two--even">
+                    <Card
+                        title={`Viviendas ${phase === "iniciada" ? "iniciadas" : "terminadas"} por mes`}
+                        action={
+                            <SegmentedControl
+                                label="Fase de la obra"
+                                value={phase}
+                                onChange={setPhase}
+                                options={[{ value: "iniciada", label: "Iniciadas" }, { value: "terminada", label: "Terminadas" }]}
+                            />
+                        }
+                    >
+                        <ConstructionChart records={analytics.construction} phase={phase} />
+                        <p className="chart__note">
+                            Libre es una estimación; protegida son calificaciones (provisional = iniciada, definitiva = terminada).
+                            {provisionalSince && <> Cifras provisionales desde {formatMonth(provisionalSince)}.</>}
+                        </p>
+                    </Card>
+                    <Card title="Obra frente a compraventas">
+                        <SupplyDemandChart records={analytics.construction} sales={analytics.propertySales} />
+                        <p className="chart__note">Totales trimestrales: compraventas del INE frente a viviendas iniciadas y terminadas (MIVAU, vía ISTAC).</p>
+                    </Card>
+                </div>
+            )}
 
             {analytics.propertySales.length > 0 && (
                 <Card title="Actividad por año y mes">

@@ -1,12 +1,15 @@
 import { SCORE_NAME } from "../utils/brand";
+import type { ConstructionPhase } from "../api/types";
 import { ArrowDown, ArrowUp } from "lucide-react";
 import { useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { ActivityHeatmap } from "../charts/ActivityHeatmap";
+import { ConstructionChart } from "../charts/ConstructionChart";
 import type { IndexView } from "../charts/EvolutionChart";
 import { PriceActivityScatter, type ScatterPoint } from "../charts/PriceActivityScatter";
 import { PriceCompareChart } from "../charts/PriceCompareChart";
 import { SalesChart } from "../charts/SalesChart";
+import { SupplyDemandChart } from "../charts/SupplyDemandChart";
 import { BarList } from "../components/BarList";
 import { Card } from "../components/Card";
 import { FavoriteButton } from "../components/FavoriteButton";
@@ -22,11 +25,13 @@ import { TimeSlider } from "../components/TimeSlider";
 import { useMarketData } from "../hooks/useMarketData";
 import { formatDecimal, formatIndex, formatNumber, formatPercent, formatPrice, formatQuarter, formatSigned, scoreTone } from "../utils/format";
 import {
-    METRICS, buildScale, computeRow, defaultQuarter, extremes, formatMetric, groupByCommunity, metricOf, priceComparison,
-    priceQuarters, rankOf, scaleRanges, summarize, type MarketRow,
+    METRICS, buildScale, computeRow, constructionQuarters, defaultQuarter, extremes, formatMetric, groupByCommunity, metricOf,
+    priceComparison, priceQuarters, rankOf, scaleRanges, summarize, summarizeConstruction, type MarketRow,
 } from "../utils/market";
 
-type SortKey = "name" | "score" | "price" | "priceChange" | "operationsRate" | "newShare" | "priceIndex" | "trend" | "activityIndex";
+type SortKey =
+    | "name" | "score" | "price" | "priceChange" | "operationsRate" | "newShare" | "startedRate" | "protectedShare"
+    | "priceIndex" | "trend" | "activityIndex";
 
 const RANKING_SIZE = 5;
 
@@ -34,12 +39,13 @@ function isNumber(value: number | null): value is number {
     return value != null;
 }
 
-// Panel principal: mapa interactivo con selector de métrica y de trimestre, cifras nacionales, gráficos y tabla de las 52 provincias.
+// Panel principal: mapa interactivo con selector de métrica y de trimestre, cifras nacionales de mercado y de obra, gráficos y tabla de las 52 provincias.
 export function ExplorePage() {
     const market = useMarketData();
     const [params, setParams] = useSearchParams();
     const [chosenPeriod, setChosenPeriod] = useState<string | null>(null);
     const [view, setView] = useState<IndexView>("historical");
+    const [phase, setPhase] = useState<ConstructionPhase>("iniciada");
     const [query, setQuery] = useState("");
     const [sort, setSort] = useState<{ key: SortKey; direction: "asc" | "desc" }>({ key: "score", direction: "desc" });
     const [hoveredRow, setHoveredRow] = useState<string | null>(null);
@@ -52,9 +58,23 @@ export function ExplorePage() {
 
     const quarters = useMemo(() => priceQuarters(series), [series]);
     const defaultPeriod = useMemo(() => defaultQuarter(series, quarters), [series, quarters]);
-    const period = chosenPeriod && quarters.includes(chosenPeriod) ? chosenPeriod : defaultPeriod;
+    // La obra llega con más retraso que el precio: sin trimestre elegido, sus lecturas del mapa abren en el último con dato.
+    const constructionPeriods = useMemo(() => constructionQuarters(series, quarters), [series, quarters]);
+    const preferredPeriod = definition.group === "construction" ? constructionPeriods.at(-1) ?? null : null;
+    const period = chosenPeriod && quarters.includes(chosenPeriod) ? chosenPeriod : preferredPeriod ?? defaultPeriod;
+
+    // Trimestre de las cifras de obra: el elegido si ya tiene dato y, si no, el último anterior con dato.
+    const constructionPeriod = period
+        ? (constructionPeriods.includes(period) ? period : constructionPeriods.filter((item) => item <= period).at(-1) ?? constructionPeriods.at(-1) ?? null)
+        : null;
 
     const rows = useMemo(() => (period ? series.map((item) => computeRow(item, period)) : []), [series, period]);
+    const constructionRows = useMemo(
+        () => (constructionPeriod && constructionPeriod !== period ? series.map((item) => computeRow(item, constructionPeriod)) : rows),
+        [series, constructionPeriod, period, rows],
+    );
+    const constructionByCode = useMemo(() => new Map(constructionRows.map((row) => [row.code, row])), [constructionRows]);
+    const constructionSummary = useMemo(() => summarizeConstruction(constructionRows), [constructionRows]);
     const scale = useMemo(() => buildScale(rows.map(definition.pick).filter(isNumber)), [rows, definition]);
     const summary = useMemo(() => summarize(rows), [rows]);
     const rankMap = useMemo(() => rankOf(rows, definition), [rows, definition]);
@@ -78,6 +98,10 @@ export function ExplorePage() {
         () => (selectedSeries ? selectedSeries.analytics.propertySales : series.flatMap((item) => item.analytics.propertySales)),
         [series, selectedSeries],
     );
+    const construction = useMemo(
+        () => (selectedSeries ? selectedSeries.analytics.construction ?? [] : series.flatMap((item) => item.analytics.construction ?? [])),
+        [series, selectedSeries],
+    );
     const scatterPoints: ScatterPoint[] = useMemo(
         () => rows.flatMap((row) => (row.price != null && row.operationsRate != null
             ? [{ code: row.code, name: row.name, price: row.price, rate: row.operationsRate, population: row.population }]
@@ -98,6 +122,8 @@ export function ExplorePage() {
                 case "priceChange": return row.priceChange ?? -Infinity;
                 case "operationsRate": return row.operationsRate ?? -Infinity;
                 case "newShare": return row.newShare ?? -Infinity;
+                case "startedRate": return constructionByCode.get(row.code)?.startedRate ?? -Infinity;
+                case "protectedShare": return constructionByCode.get(row.code)?.protectedShare ?? -Infinity;
                 case "priceIndex": return (view === "historical" ? row.priceIndex : row.priceIndexNational) ?? -Infinity;
                 case "trend": return row.trend ?? -Infinity;
                 default: return (view === "historical" ? row.activityIndex : row.activityIndexNational) ?? -Infinity;
@@ -113,7 +139,7 @@ export function ExplorePage() {
                 if (typeof left === "string" && typeof right === "string") return left.localeCompare(right, "es") * direction;
                 return ((left as number) - (right as number)) * direction;
             });
-    }, [rows, query, sort, view]);
+    }, [rows, query, sort, view, constructionByCode]);
 
     function updateParam(key: "m" | "p", value: string | null) {
         const next = new URLSearchParams(params);
@@ -156,7 +182,7 @@ export function ExplorePage() {
     if (!period) {
         return (
             <div className="page">
-                <EmptyState title="Aún no hay datos de mercado" text="Cuando el importador procese los datos del INE y el MIVAU aparecerán aquí." />
+                <EmptyState title="Aún no hay datos de mercado" text="Cuando el importador procese los datos del INE, el MIVAU y el ISTAC aparecerán aquí." />
             </div>
         );
     }
@@ -238,6 +264,34 @@ export function ExplorePage() {
                 </Card>
             </div>
 
+            {constructionPeriod && constructionSummary.started != null && (
+                <div className="stat-grid stat-grid--four">
+                    <Card className="stat">
+                        <span className="stat__label">Viviendas iniciadas · {formatQuarter(constructionPeriod)}</span>
+                        <strong className="stat__value">{formatNumber(constructionSummary.started)}</strong>
+                        <span className="stat__note">
+                            {formatDecimal(constructionSummary.startedRate)} por 10.000 hab.
+                            {constructionSummary.startedChange != null ? ` · ${formatPercent(constructionSummary.startedChange, true)} anual` : ""}
+                        </span>
+                    </Card>
+                    <Card className="stat">
+                        <span className="stat__label">Obra protegida</span>
+                        <strong className="stat__value">{formatPercent(constructionSummary.protectedShare)}</strong>
+                        <span className="stat__note">de las viviendas iniciadas son de protección oficial</span>
+                    </Card>
+                    <Card className="stat">
+                        <span className="stat__label">Viviendas terminadas</span>
+                        <strong className="stat__value">{constructionSummary.completed == null ? "—" : formatNumber(constructionSummary.completed)}</strong>
+                        <span className="stat__note">en el trimestre, libres y protegidas</span>
+                    </Card>
+                    <Card className="stat">
+                        <span className="stat__label">Obra frente a demanda</span>
+                        <strong className="stat__value">{constructionSummary.supplyRatio == null ? "—" : `${formatDecimal(constructionSummary.supplyRatio, 0)} por 100`}</strong>
+                        <span className="stat__note">viviendas iniciadas por cada 100 compraventas</span>
+                    </Card>
+                </div>
+            )}
+
             <div className="dashboard">
                 <Card className="dashboard__map" title="Mapa del mercado">
                     <div className="dashboard__metrics">
@@ -272,6 +326,8 @@ export function ExplorePage() {
                             rank={rankMap.get(selectedRow.code) ?? null}
                             ranked={rankMap.size}
                             medianPrice={summary.medianPrice}
+                            construction={constructionByCode.get(selectedRow.code) ?? null}
+                            constructionPeriod={constructionPeriod}
                             onClose={() => updateParam("p", null)}
                         />
                     ) : (
@@ -329,6 +385,39 @@ export function ExplorePage() {
                 </Card>
             </div>
 
+            <div className="grid-two grid-two--even">
+                <Card
+                    title={`Viviendas ${phase === "iniciada" ? "iniciadas" : "terminadas"} por mes · ${scopeName}`}
+                    action={
+                        <SegmentedControl
+                            label="Fase de la obra"
+                            value={phase}
+                            onChange={setPhase}
+                            options={[{ value: "iniciada", label: "Iniciadas" }, { value: "terminada", label: "Terminadas" }]}
+                        />
+                    }
+                >
+                    {construction.length > 0 ? (
+                        <>
+                            <ConstructionChart records={construction} phase={phase} />
+                            <p className="chart__note">Libre es una estimación; protegida son calificaciones. Las cifras recientes son provisionales (MIVAU, vía ISTAC).</p>
+                        </>
+                    ) : (
+                        <EmptyState title="Sin obra" text="El ISTAC no ha publicado datos de construcción para esta selección." />
+                    )}
+                </Card>
+                <Card title={`Obra frente a compraventas · ${scopeName}`}>
+                    {construction.length > 0 ? (
+                        <>
+                            <SupplyDemandChart records={construction} sales={sales} />
+                            <p className="chart__note">Totales trimestrales: compraventas del INE frente a viviendas iniciadas y terminadas.</p>
+                        </>
+                    ) : (
+                        <EmptyState title="Sin obra" text="El ISTAC no ha publicado datos de construcción para esta selección." />
+                    )}
+                </Card>
+            </div>
+
             {sales.length > 0 && (
                 <Card title={`Estacionalidad de las compraventas · ${scopeName}`}>
                     <ActivityHeatmap sales={sales} />
@@ -360,6 +449,8 @@ export function ExplorePage() {
                                     {header("priceChange", "Var. anual")}
                                     {header("operationsRate", "Compraventas /1.000 hab.")}
                                     {header("newShare", "Vivienda nueva")}
+                                    {header("startedRate", "Obra iniciada /10.000 hab.")}
+                                    {header("protectedShare", "Obra protegida")}
                                     {header("priceIndex", "Índ. precio")}
                                     {header("trend", "Tendencia")}
                                     {header("activityIndex", "Índ. actividad")}
@@ -385,6 +476,8 @@ export function ExplorePage() {
                                         <td className={(row.priceChange ?? 0) < 0 ? "text-negative" : "text-positive"}>{formatPercent(row.priceChange, true)}</td>
                                         <td>{formatDecimal(row.operationsRate)}</td>
                                         <td>{formatPercent(row.newShare)}</td>
+                                        <td>{formatDecimal(constructionByCode.get(row.code)?.startedRate)}</td>
+                                        <td>{formatPercent(constructionByCode.get(row.code)?.protectedShare)}</td>
                                         <td>{formatIndex(priceIndexOf(row))}</td>
                                         <td className={(row.trend ?? 0) < 0 ? "text-negative" : "text-positive"}>{formatSigned(row.trend)}</td>
                                         <td>{formatIndex(activityIndexOf(row))}</td>
@@ -394,6 +487,11 @@ export function ExplorePage() {
                             </tbody>
                         </table>
                     </div>
+                    {constructionPeriod && (
+                        <p className="chart__note table__note">
+                            La obra iniciada y protegida corresponde al {formatQuarter(constructionPeriod)}, el último trimestre con dato del MIVAU (vía ISTAC).
+                        </p>
+                    )}
                 </Card>
             </div>
         </div>

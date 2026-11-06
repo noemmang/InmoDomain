@@ -593,3 +593,16 @@ button.bar-list__row:hover {
     background: var(--color-accent);
     transition: width var(--duration-base) var(--ease-out);
 }
+
+/* Nota bajo la tabla de provincias */
+.table__note {
+    margin-top: 0;
+    padding: var(--space-4) var(--space-5) var(--space-5);
+    font-size: 0.9rem;
+}
+
+/* Encabezado de una sección de la ficha sin tarjeta propia */
+.page__section-title {
+    margin-bottom: calc(var(--space-3) * -1);
+    font-size: 1.15rem;
+}

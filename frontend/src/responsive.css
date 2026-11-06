@@ -1,5 +1,9 @@
 /* Tablet: las rejillas de dos o más columnas pasan a menos columnas */
 @media (max-width: 1024px) {
+    .site__main--contained {
+        padding-inline: var(--space-5);
+    }
+
     .hero__inner,
     .score-explainer,
     .grid-two,

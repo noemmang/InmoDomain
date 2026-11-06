@@ -13,6 +13,7 @@ import { SupplyDemandChart } from "../charts/SupplyDemandChart";
 import { ButtonLink } from "../components/Button";
 import { Card } from "../components/Card";
 import { FavoriteButton } from "../components/FavoriteButton";
+import { ProvinceSilhouette } from "../components/ProvinceSilhouette";
 import { ScoreRing } from "../components/ScoreRing";
 import { SegmentedControl } from "../components/SegmentedControl";
 import { EmptyState, ErrorState, LoadingState } from "../components/StateViews";
@@ -34,7 +35,11 @@ export function ProvincePage() {
     const state = useAsync(() => analyticsApi.province(code, customQuarters), [code, customQuarters]);
     const analytics = state.data;
 
-    const latest = useMemo(() => [...(analytics?.history ?? [])].sort((a, b) => a.period.localeCompare(b.period)).at(-1), [analytics]);
+    // Último trimestre con Índice calculado: el trimestre en curso solo trae la actividad del INE hasta que el MIVAU publica el precio.
+    const latest = useMemo(() => {
+        const history = [...(analytics?.history ?? [])].sort((a, b) => a.period.localeCompare(b.period));
+        return history.filter((row) => row.score != null).at(-1) ?? history.at(-1);
+    }, [analytics]);
 
     // Precio medio del último periodo publicado (media de las dos antigüedades de vivienda).
     const latestPrice = useMemo(() => {
@@ -76,12 +81,15 @@ export function ProvincePage() {
     return (
         <div className="page">
             <header className="page__header">
-                <div>
-                    <h1 className="page__title">{province.name}</h1>
-                    <p className="page__subtitle">
-                        {province.autonomousCommunity} · {formatNumber(province.population)} habitantes
-                        {latest && <> · Datos del {formatQuarter(latest.period)}</>}
-                    </p>
+                <div className="page__identity">
+                    <ProvinceSilhouette code={code} name={province.name} />
+                    <div>
+                        <h1 className="page__title">{province.name}</h1>
+                        <p className="page__subtitle">
+                            {province.autonomousCommunity} · {formatNumber(province.population)} habitantes
+                            {latest && <> · Datos del {formatQuarter(latest.period)}</>}
+                        </p>
+                    </div>
                 </div>
                 <div className="page__actions">
                     <FavoriteButton provinceCode={code} withLabel />

@@ -602,10 +602,45 @@ button.bar-list__row:hover {
     font-size: 1.15rem;
 }
 
-/* Escritorio: Explorar, Comparar y Provincia aprovechan más ancho (la portada y la zona de cuenta no cambian) */
+/* Escritorio: el contenido de Explorar, Comparar y Provincia es más ancho y con más margen lateral; la cabecera no cambia */
 .site:has(> .site__main--contained) {
-    --content-width: 1640px;
+    --page-width: 1640px;
 }
+
+.site__main--contained {
+    max-width: var(--page-width, var(--content-width));
+    padding-inline: clamp(var(--space-5), 8vw, 9rem);
+}
+
+.site__main--contained .page {
+    max-width: var(--page-width, var(--content-width));
+}
+
+/* Tabla de provincias compacta para que las once columnas quepan sin desplazamiento horizontal */
+.table--compact th,
+.table--compact td {
+    padding-inline: var(--space-3);
+}
+
+/* Cabecera de la ficha: silueta de la provincia junto al nombre */
+.page__identity {
+    display: flex;
+    align-items: center;
+    gap: var(--space-4);
+}
+
+.province-silhouette {
+    flex: none;
+    width: 84px;
+    height: 72px;
+}
+
+    .province-silhouette path {
+        fill: var(--color-primary);
+        stroke: var(--color-primary);
+        stroke-width: 1.5;
+        stroke-linejoin: round;
+    }
 
 /* Tarjetas de gráficos en mosaico: 1, 2 o 3 columnas según el ancho y sin huecos entre tarjetas de distinta altura */
 .masonry {

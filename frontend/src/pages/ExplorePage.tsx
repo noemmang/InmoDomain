@@ -191,9 +191,10 @@ export function ExplorePage() {
     const averageScore = scoreValues.length ? scoreValues.reduce((total, value) => total + value, 0) / scoreValues.length : null;
     const scopeName = selectedRow?.name ?? "España";
 
-    const header = (key: SortKey, label: string) => (
+    // La etiqueta es la abreviada; el nombre completo queda en el atributo title.
+    const header = (key: SortKey, label: string, title?: string) => (
         <th scope="col" aria-sort={sort.key === key ? (sort.direction === "asc" ? "ascending" : "descending") : "none"}>
-            <button type="button" className="table__sort" onClick={() => changeSort(key)}>
+            <button type="button" className="table__sort" title={title} onClick={() => changeSort(key)}>
                 {label}
                 {sort.key === key && (sort.direction === "asc" ? <ArrowUp size={14} /> : <ArrowDown size={14} />)}
             </button>
@@ -419,20 +420,20 @@ export function ExplorePage() {
                     }
                 >
                     <div className="table-wrap">
-                        <table className="table">
+                        <table className="table table--compact">
                             <thead>
                                 <tr>
                                     {header("name", "Provincia")}
                                     {header("score", "Índice")}
-                                    {header("price", "Precio €/m²")}
+                                    {header("price", "€/m²", "Precio medio por metro cuadrado")}
                                     {header("priceChange", "Var. anual")}
-                                    {header("operationsRate", "Compraventas /1.000 hab.")}
-                                    {header("newShare", "Vivienda nueva")}
-                                    {header("startedRate", "Obra iniciada /10.000 hab.")}
-                                    {header("protectedShare", "Obra protegida")}
-                                    {header("priceIndex", "Índ. precio")}
+                                    {header("operationsRate", "Ventas /1.000", "Compraventas por 1.000 habitantes")}
+                                    {header("newShare", "Nueva", "Vivienda nueva sobre el total de compraventas")}
+                                    {header("startedRate", "Obra /10.000", "Viviendas iniciadas por 10.000 habitantes")}
+                                    {header("protectedShare", "Protegida", "Obra protegida sobre las viviendas iniciadas")}
+                                    {header("priceIndex", "Índ. precio", "Índice de precio")}
                                     {header("trend", "Tendencia")}
-                                    {header("activityIndex", "Índ. actividad")}
+                                    {header("activityIndex", "Índ. activ.", "Índice de actividad")}
                                     <th scope="col"><span className="visually-hidden">Favorito</span></th>
                                 </tr>
                             </thead>
@@ -466,11 +467,10 @@ export function ExplorePage() {
                             </tbody>
                         </table>
                     </div>
-                    {constructionPeriod && (
-                        <p className="chart__note table__note">
-                            La obra iniciada y protegida corresponde al {formatQuarter(constructionPeriod)}, el último trimestre con dato del MIVAU (vía ISTAC).
-                        </p>
-                    )}
+                    <p className="chart__note table__note">
+                        Ventas: compraventas por 1.000 habitantes. Obra: viviendas iniciadas por 10.000 habitantes.
+                        {constructionPeriod && <> La obra corresponde al {formatQuarter(constructionPeriod)}, el último trimestre con dato del MIVAU (vía ISTAC).</>}
+                    </p>
                 </Card>
             </div>
         </div>

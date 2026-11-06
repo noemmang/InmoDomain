@@ -11,8 +11,10 @@ builder.Services.AddDbContext<MarketDataDbContext>(options =>
 
 builder.Services.AddScoped<IHousingSaleRepository, HousingSaleRepository>();
 builder.Services.AddScoped<IAppraisedValueRepository, AppraisedValueRepository>();
+builder.Services.AddScoped<IConstructionRepository, ConstructionRepository>();
 builder.Services.AddScoped<IHousingSaleService, HousingSaleService>();
 builder.Services.AddScoped<IAppraisedValueService, AppraisedValueService>();
+builder.Services.AddScoped<IConstructionService, ConstructionService>();
 
 builder.Services.AddControllers();
 

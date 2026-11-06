@@ -71,6 +71,8 @@
 }
 
 html {
+    max-width: 100%;
+    overflow-x: clip;
     color-scheme: dark;
     scroll-behavior: smooth;
     scroll-padding-top: 88px;
@@ -78,6 +80,8 @@ html {
 
 body {
     margin: 0;
+    max-width: 100%;
+    overflow-x: clip;
     min-height: 100dvh;
     background: var(--color-bg);
     color: var(--color-text);
@@ -440,6 +444,7 @@ ol {
 
 /* Tarjeta de superficie */
 .card {
+    min-width: 0;
     padding: var(--space-5);
     border-radius: var(--radius-lg);
     background: var(--color-surface);
@@ -1211,6 +1216,7 @@ ol {
 /* Páginas del panel */
 .page {
     display: grid;
+    grid-template-columns: minmax(0, 1fr);
     align-content: start;
     gap: var(--space-5);
     width: 100%;
@@ -1254,13 +1260,13 @@ ol {
 
 .grid-two {
     display: grid;
-    grid-template-columns: 1fr 1.5fr;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.5fr);
     align-items: start;
     gap: var(--space-4);
 }
 
 .grid-two--even {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .card-grid {
@@ -1272,7 +1278,7 @@ ol {
 /* Indicadores */
 .stat-grid {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: var(--space-4);
 }
 
@@ -1302,7 +1308,7 @@ ol {
 
 .province-summary {
     display: grid;
-    grid-template-columns: 1.1fr repeat(4, 1fr);
+    grid-template-columns: minmax(0, 1.1fr) repeat(4, minmax(0, 1fr));
     gap: var(--space-4);
 }
 

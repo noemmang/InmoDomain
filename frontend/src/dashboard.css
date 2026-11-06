@@ -1,6 +1,6 @@
 /* Panel Explorar: indicadores en cuatro columnas */
 .stat-grid--four {
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
 /* Panel Explorar: aviso de carga parcial */
@@ -34,6 +34,7 @@
 }
 
 .dashboard__metrics {
+    max-width: 100%;
     overflow-x: auto;
     margin: calc(var(--space-1) * -1);
     padding: var(--space-1);
@@ -47,6 +48,8 @@
 
 .dashboard__aside {
     display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    min-width: 0;
     gap: var(--space-4);
 }
 

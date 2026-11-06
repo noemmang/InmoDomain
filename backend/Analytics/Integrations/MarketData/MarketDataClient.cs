@@ -32,6 +32,13 @@ public class MarketDataClient : IMarketDataClient
         return result ?? [];
     }
 
+    public async Task<IReadOnlyList<ConstructionActivityDto>> GetConstructionAsync(string provinceCode, DateOnly? from, DateOnly? to)
+    {
+        var url = BuildUrl("api/v1/construction", provinceCode, from, to);
+        var result = await _httpClient.GetFromJsonAsync<List<ConstructionActivityDto>>(url, SerializerOptions);
+        return result ?? [];
+    }
+
     private static string BuildUrl(string path, string provinceCode, DateOnly? from, DateOnly? to)
     {
         var query = $"provinceCode={Uri.EscapeDataString(provinceCode)}";

@@ -8,6 +8,7 @@ public class MemoizedMarketDataClient : IMarketDataClient
     private readonly IMarketDataClient _inner;
     private readonly Dictionary<(string, DateOnly?, DateOnly?), IReadOnlyList<PropertySaleDto>> _sales = new();
     private readonly Dictionary<(string, DateOnly?, DateOnly?), IReadOnlyList<AppraisedValueDto>> _values = new();
+    private readonly Dictionary<(string, DateOnly?, DateOnly?), IReadOnlyList<ConstructionActivityDto>> _construction = new();
 
     public MemoizedMarketDataClient(IMarketDataClient inner)
     {
@@ -33,6 +34,18 @@ public class MemoizedMarketDataClient : IMarketDataClient
         {
             result = await _inner.GetAppraisedValuesAsync(provinceCode, from, to);
             _values[key] = result;
+        }
+
+        return result;
+    }
+
+    public async Task<IReadOnlyList<ConstructionActivityDto>> GetConstructionAsync(string provinceCode, DateOnly? from, DateOnly? to)
+    {
+        var key = (provinceCode, from, to);
+        if (!_construction.TryGetValue(key, out var result))
+        {
+            result = await _inner.GetConstructionAsync(provinceCode, from, to);
+            _construction[key] = result;
         }
 
         return result;

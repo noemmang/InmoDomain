@@ -27,6 +27,7 @@ public class ProvinceAnalyticsService : IProvinceAnalyticsService
         var history = await _propertyScoreRepository.GetHistoryAsync(provinceCode, from, to);
         var sales = await _marketDataClient.GetPropertySalesAsync(provinceCode, from, to);
         var appraisedValues = await _marketDataClient.GetAppraisedValuesAsync(provinceCode, from, to);
+        var construction = await GetConstructionOrEmptyAsync(provinceCode, from, to);
 
         var dto = new ProvinceAnalyticsDto
         {
@@ -43,6 +44,14 @@ public class ProvinceAnalyticsService : IProvinceAnalyticsService
                 Period = a.Period,
                 Age = a.Age,
                 PricePerSquareMeter = a.PricePerSquareMeter
+            }).ToList(),
+            Construction = construction.Select(c => new ConstructionRawDto
+            {
+                Period = c.Period,
+                Phase = c.Phase,
+                Regime = c.Regime,
+                DwellingsCount = c.DwellingsCount,
+                IsProvisional = c.IsProvisional
             }).ToList(),
             IsFavorite = null
         };
@@ -67,6 +76,21 @@ public class ProvinceAnalyticsService : IProvinceAnalyticsService
         }
 
         return dto;
+    }
+
+    // La construccion es un dato complementario de la ficha: si Market Data no la sirve (p. ej. durante un
+    // despliegue en el que la API aun no tiene el endpoint), la ficha sale igual con la serie vacia.
+    private async Task<IReadOnlyList<Integrations.MarketData.Dtos.ConstructionActivityDto>> GetConstructionOrEmptyAsync(
+        string provinceCode, DateOnly? from, DateOnly? to)
+    {
+        try
+        {
+            return await _marketDataClient.GetConstructionAsync(provinceCode, from, to);
+        }
+        catch (HttpRequestException)
+        {
+            return [];
+        }
     }
 
     private async Task<CustomTrendDto> CalculateCustomTrendAsync(

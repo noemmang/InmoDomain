@@ -11,7 +11,8 @@ const SLOW_AFTER_MS = 4000;
 const cache = new Map<string, ProvinceAnalytics>();
 const inFlight = new Map<string, Promise<ProvinceAnalytics>>();
 
-function loadProvince(code: string): Promise<ProvinceAnalytics> {
+// Ficha de una provincia con la caché de sesión; la reutilizan Explorar y el comparador.
+export function loadProvince(code: string): Promise<ProvinceAnalytics> {
     const cached = cache.get(code);
     if (cached) return Promise.resolve(cached);
 

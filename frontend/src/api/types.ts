@@ -58,6 +58,18 @@ export interface AppraisedValue {
     pricePerSquareMeter: number;
 }
 
+export type ConstructionPhase = "iniciada" | "terminada";
+export type ConstructionRegime = "libre" | "protegida";
+
+// Viviendas iniciadas o terminadas en un mes, por régimen. Las cifras recientes son provisionales.
+export interface ConstructionRecord {
+    period: string;
+    phase: ConstructionPhase;
+    regime: ConstructionRegime;
+    dwellingsCount: number;
+    isProvisional: boolean;
+}
+
 export interface CustomTrend {
     trendQuarters: number;
     hasSufficientData: boolean;
@@ -69,6 +81,7 @@ export interface ProvinceAnalytics {
     history: ScorePeriod[];
     propertySales: PropertySale[];
     appraisedValues: AppraisedValue[];
+    construction: ConstructionRecord[];
     isFavorite: boolean | null;
     customTrend: CustomTrend | null;
 }

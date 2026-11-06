@@ -53,14 +53,6 @@
     gap: var(--space-4);
 }
 
-.dashboard__hint {
-    text-align: center;
-}
-
-    .dashboard__hint .state__text {
-        margin-top: var(--space-2);
-    }
-
 /* Control temporal del mapa */
 .time-slider {
     display: flex;
@@ -608,4 +600,23 @@ button.bar-list__row:hover {
 .page__section-title {
     margin-bottom: calc(var(--space-3) * -1);
     font-size: 1.15rem;
+}
+
+/* Escritorio: Explorar, Comparar y Provincia aprovechan más ancho (la portada y la zona de cuenta no cambian) */
+.site:has(> .site__main--contained) {
+    --content-width: 1640px;
+}
+
+/* Tarjetas de gráficos en mosaico: 1, 2 o 3 columnas según el ancho y sin huecos entre tarjetas de distinta altura */
+.masonry {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 520px), 1fr));
+    grid-auto-rows: 8px;
+    grid-auto-flow: row dense;
+    column-gap: var(--space-4);
+    align-items: start;
+}
+
+.masonry__item {
+    min-width: 0;
 }

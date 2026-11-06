@@ -5,7 +5,6 @@ import { useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { ActivityHeatmap } from "../charts/ActivityHeatmap";
 import { ConstructionChart } from "../charts/ConstructionChart";
-import type { IndexView } from "../charts/EvolutionChart";
 import { PriceActivityScatter, type ScatterPoint } from "../charts/PriceActivityScatter";
 import { PriceCompareChart } from "../charts/PriceCompareChart";
 import { SalesChart } from "../charts/SalesChart";
@@ -16,6 +15,7 @@ import { FavoriteButton } from "../components/FavoriteButton";
 import { MapKey } from "../components/MapKey";
 import { MarketLoading } from "../components/MarketLoading";
 import { MarketMap } from "../components/MarketMap";
+import { Masonry } from "../components/Masonry";
 import { ProvincePanel } from "../components/ProvincePanel";
 import { RankList } from "../components/RankList";
 import { SegmentedControl } from "../components/SegmentedControl";
@@ -44,7 +44,6 @@ export function ExplorePage() {
     const market = useMarketData();
     const [params, setParams] = useSearchParams();
     const [chosenPeriod, setChosenPeriod] = useState<string | null>(null);
-    const [view, setView] = useState<IndexView>("historical");
     const [phase, setPhase] = useState<ConstructionPhase>("iniciada");
     const [query, setQuery] = useState("");
     const [sort, setSort] = useState<{ key: SortKey; direction: "asc" | "desc" }>({ key: "score", direction: "desc" });
@@ -109,9 +108,6 @@ export function ExplorePage() {
         [rows],
     );
 
-    const priceIndexOf = (row: MarketRow) => (view === "historical" ? row.priceIndex : row.priceIndexNational);
-    const activityIndexOf = (row: MarketRow) => (view === "historical" ? row.activityIndex : row.activityIndexNational);
-
     const visibleRows = useMemo(() => {
         const text = query.trim().toLowerCase();
         const value = (row: MarketRow): number | string => {
@@ -124,9 +120,9 @@ export function ExplorePage() {
                 case "newShare": return row.newShare ?? -Infinity;
                 case "startedRate": return constructionByCode.get(row.code)?.startedRate ?? -Infinity;
                 case "protectedShare": return constructionByCode.get(row.code)?.protectedShare ?? -Infinity;
-                case "priceIndex": return (view === "historical" ? row.priceIndex : row.priceIndexNational) ?? -Infinity;
+                case "priceIndex": return row.priceIndex ?? -Infinity;
                 case "trend": return row.trend ?? -Infinity;
-                default: return (view === "historical" ? row.activityIndex : row.activityIndexNational) ?? -Infinity;
+                default: return row.activityIndex ?? -Infinity;
             }
         };
         const direction = sort.direction === "asc" ? 1 : -1;
@@ -139,7 +135,7 @@ export function ExplorePage() {
                 if (typeof left === "string" && typeof right === "string") return left.localeCompare(right, "es") * direction;
                 return ((left as number) - (right as number)) * direction;
             });
-    }, [rows, query, sort, view, constructionByCode]);
+    }, [rows, query, sort, constructionByCode]);
 
     function updateParam(key: "m" | "p", value: string | null) {
         const next = new URLSearchParams(params);
@@ -217,12 +213,6 @@ export function ExplorePage() {
                     <h1 className="page__title">Mercado inmobiliario</h1>
                     <p className="page__subtitle">Datos del {quarter} · {series.length} provincias</p>
                 </div>
-                <SegmentedControl
-                    label="Tipo de índice"
-                    value={view}
-                    onChange={setView}
-                    options={[{ value: "historical", label: "Percentil histórico" }, { value: "national", label: "Ranking nacional" }]}
-                />
             </header>
 
             {market.failed.length > 0 && (
@@ -318,7 +308,7 @@ export function ExplorePage() {
                 </Card>
 
                 <div className="dashboard__aside" ref={asideRef}>
-                    {selectedRow ? (
+                    {selectedRow && (
                         <ProvincePanel
                             row={selectedRow}
                             period={period}
@@ -330,11 +320,6 @@ export function ExplorePage() {
                             constructionPeriod={constructionPeriod}
                             onClose={() => updateParam("p", null)}
                         />
-                    ) : (
-                        <Card className="dashboard__hint">
-                            <p className="state__title">Elige una provincia</p>
-                            <p className="state__text">Pulsa una provincia del mapa para ver su resumen y compararla con el resto de España.</p>
-                        </Card>
                     )}
                     <Card>
                         <RankList title="Valores más altos" items={rankItems(highest)} selected={selectedCode} onSelect={toggleProvince} />
@@ -343,16 +328,13 @@ export function ExplorePage() {
                 </div>
             </div>
 
-            <div className="grid-two grid-two--even">
+            <Masonry>
                 <Card title={`Precio por m² · ${selectedRow ? `${scopeName} frente a España` : "mediana provincial"}`}>
                     <PriceCompareChart data={comparison} provinceName={selectedRow?.name ?? null} period={period} />
                 </Card>
                 <Card title={`Compraventas mensuales · ${scopeName}`}>
                     {sales.length > 0 ? <SalesChart sales={sales} /> : <EmptyState title="Sin compraventas" text="El INE no ha publicado datos para esta selección." />}
                 </Card>
-            </div>
-
-            <div className="grid-two grid-two--even">
                 <Card title={`Precio y actividad por provincia · ${quarter}`}>
                     {scatterPoints.length > 0 ? (
                         <>
@@ -383,9 +365,6 @@ export function ExplorePage() {
                         <EmptyState title="Sin datos" text={`No hay ${definition.label.toLowerCase()} calculado en el ${quarter}.`} />
                     )}
                 </Card>
-            </div>
-
-            <div className="grid-two grid-two--even">
                 <Card
                     title={`Viviendas ${phase === "iniciada" ? "iniciadas" : "terminadas"} por mes · ${scopeName}`}
                     action={
@@ -416,7 +395,7 @@ export function ExplorePage() {
                         <EmptyState title="Sin obra" text="El ISTAC no ha publicado datos de construcción para esta selección." />
                     )}
                 </Card>
-            </div>
+            </Masonry>
 
             {sales.length > 0 && (
                 <Card title={`Estacionalidad de las compraventas · ${scopeName}`}>
@@ -478,9 +457,9 @@ export function ExplorePage() {
                                         <td>{formatPercent(row.newShare)}</td>
                                         <td>{formatDecimal(constructionByCode.get(row.code)?.startedRate)}</td>
                                         <td>{formatPercent(constructionByCode.get(row.code)?.protectedShare)}</td>
-                                        <td>{formatIndex(priceIndexOf(row))}</td>
+                                        <td>{formatIndex(row.priceIndex)}</td>
                                         <td className={(row.trend ?? 0) < 0 ? "text-negative" : "text-positive"}>{formatSigned(row.trend)}</td>
-                                        <td>{formatIndex(activityIndexOf(row))}</td>
+                                        <td>{formatIndex(row.activityIndex)}</td>
                                         <td><FavoriteButton provinceCode={row.code} /></td>
                                     </tr>
                                 ))}

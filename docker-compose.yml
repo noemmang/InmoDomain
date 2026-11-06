@@ -123,3 +123,4 @@ services:
     environment:
       ConnectionStrings__MarketData: ${MARKETDATA_CONNECTION:?Falta MARKETDATA_CONNECTION en .env}
       ConnectionStrings__ServiceBus: ${SERVICEBUS_CONNECTION:?Falta SERVICEBUS_CONNECTION en .env}
+      Import__IstacConstructionUrl: ${ISTAC_CONSTRUCTION_URL:-}

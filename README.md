@@ -4,7 +4,7 @@
 
 [![CI](https://github.com/noemmang/InmoDomain/actions/workflows/ci.yml/badge.svg)](https://github.com/noemmang/InmoDomain/actions/workflows/ci.yml)
 
-**InmoDomain** es una plataforma diseñada para explorar, analizar y comparar información del mercado inmobiliario en España utilizando datos procedentes de fuentes oficiales como el **INE** (tabla 6150) y el **MIVAU**.
+**InmoDomain** es una plataforma diseñada para explorar, analizar y comparar información del mercado inmobiliario en España utilizando datos procedentes de fuentes oficiales: el **INE** (tabla 6150), el **MIVAU** y el **ISTAC**.
 
 El proyecto permite analizar el mercado por provincia, comparar diferentes territorios, calcular un **Property Score** propio, gestionar favoritos y crear alertas personalizadas. 🔍📈
 
@@ -51,7 +51,7 @@ InmoDomain sigue una **arquitectura de microservicios**, utilizando un **API Gat
 * 🚪 **Gateway** — Reverse proxy mediante **YARP** y punto de entrada único del sistema.
 * 🔐 **Identity** — Gestión de autenticación y autorización mediante **JWT**.
 * 🏠 **Property** — Gestión de entidades geográficas como provincias y favoritos.
-* 📊 **MarketData** — Integración y obtención de datos desde fuentes externas como **INE** y **MIVAU**.
+* 📊 **MarketData** — Integración y obtención de datos desde las fuentes externas **INE**, **MIVAU** e **ISTAC**.
 * 📈 **Analytics** — Procesamiento de datos, cálculos de tendencias y generación del **Property Score**.
 * 🔔 **Alerts** — Gestión de reglas y alertas definidas por los usuarios.
 * 📬 **Notifications** — Envío de notificaciones relacionadas con las alertas.
@@ -131,6 +131,8 @@ docker compose up -d
 docker compose run --rm import-job
 ```
 
+El job importa compraventas (INE), precios tasados (MIVAU) y obra de vivienda (ISTAC). Para fijar otra versión del fichero de obra del ISTAC se define `ISTAC_CONSTRUCTION_URL` en `.env`; vacía, usa la última versión publicada.
+
 ---
 
 ## 🔄 CI/CD
@@ -162,11 +164,12 @@ Solo el Gateway tiene ingress externo; el resto de servicios solo es accesible d
 * 🗺️ Exploración del mercado inmobiliario por provincias.
 * 📊 Comparación entre diferentes provincias.
 * 📈 Análisis de tendencias del mercado.
+* 🏗️ Obra de vivienda por provincia: viviendas iniciadas y terminadas, libres y protegidas, y su relación con las compraventas.
 * ⭐ Cálculo de un **Property Score** propio.
 * ❤️ Gestión de propiedades o ubicaciones favoritas.
 * 🔔 Creación de alertas personalizadas.
 * 📬 Sistema de notificaciones.
-* 📡 Integración con datos oficiales del **INE** y **MIVAU**.
+* 📡 Integración con datos oficiales del **INE**, **MIVAU** e **ISTAC**.
 
 ---
 
@@ -174,8 +177,9 @@ Solo el Gateway tiene ingress externo; el resto de servicios solo es accesible d
 
 La plataforma consume información procedente de organismos oficiales:
 
-* 🏛️ **INE** — Instituto Nacional de Estadística.
-* 🏗️ **MIVAU** — Ministerio de Vivienda y Agenda Urbana.
+* 🏛️ **INE** — Instituto Nacional de Estadística. Compraventas de vivienda por provincia, mes y estado (nueva o segunda mano), tabla 6150 (API JSON).
+* 🏗️ **MIVAU** — Ministerio de Vivienda y Agenda Urbana. Valor tasado de la vivienda libre por provincia y trimestre (ficheros `.XLS`).
+* 📊 **ISTAC** — Instituto Canario de Estadística. Viviendas libres y protegidas iniciadas y terminadas por provincia y mes (cubo `E25004A_000001`, fichero `.xlsx`). Redistribuye la Estadística de Vivienda Libre y Protegida del MIVAU para toda España. La vivienda libre es una estimación, la protegida son calificaciones (provisional = iniciada, definitiva = terminada) y las cifras recientes son provisionales.
 
 ---
 

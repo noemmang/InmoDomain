@@ -17,7 +17,7 @@ namespace MarketData.Data.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "10.0.12")
+                .HasAnnotation("ProductVersion", "10.0.14")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -89,6 +89,53 @@ namespace MarketData.Data.Migrations
                         .IsUnique();
 
                     b.ToTable("datos_cache", (string)null);
+                });
+
+            modelBuilder.Entity("MarketData.Data.Models.ConstructionActivity", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<int>("DwellingsCount")
+                        .HasColumnType("integer")
+                        .HasColumnName("numero_viviendas");
+
+                    b.Property<bool>("IsProvisional")
+                        .HasColumnType("boolean")
+                        .HasColumnName("es_provisional");
+
+                    b.Property<DateOnly>("Period")
+                        .HasColumnType("date")
+                        .HasColumnName("periodo");
+
+                    b.Property<string>("Phase")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("fase");
+
+                    b.Property<string>("ProvinceCode")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("codigo_provincia");
+
+                    b.Property<string>("Regime")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("regimen");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProvinceCode", "Period", "Phase", "Regime")
+                        .IsUnique();
+
+                    b.ToTable("construccion_vivienda", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_construccion_fase", "fase IN ('iniciada', 'terminada')");
+
+                            t.HasCheckConstraint("ck_construccion_regimen", "regimen IN ('libre', 'protegida')");
+                        });
                 });
 
             modelBuilder.Entity("MarketData.Data.Models.HousingSale", b =>

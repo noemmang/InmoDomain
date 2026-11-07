@@ -124,7 +124,6 @@ export function ComparePage() {
                 <>
                     <Card title="Evolución en el tiempo">
                         <TimeSlider periods={quarters} value={period} onChange={setChosenPeriod} />
-                        <p className="chart__note">Mueve la línea temporal o pulsa reproducir para ver cómo cambian los índices, el precio y la obra de las provincias elegidas.</p>
                     </Card>
                     <Card title="Índices lado a lado">
                         <CompareChart entries={entries} names={names} indexView={view} />

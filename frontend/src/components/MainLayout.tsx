@@ -7,11 +7,12 @@ import { SiteHeader } from "./SiteHeader";
 export function MainLayout() {
     const { pathname } = useLocation();
     const isHome = pathname === "/";
+    const isExplore = pathname === "/explorar";
 
     return (
         <div className="site">
             <SiteHeader />
-            <main className={isHome ? "site__main" : "site__main site__main--contained"}>
+            <main className={isHome ? "site__main" : isExplore ? "site__main site__main--contained site__main--explore" : "site__main site__main--contained"}>
                 <Outlet />
             </main>
             {isHome && (

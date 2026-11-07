@@ -612,8 +612,26 @@ button.bar-list__row:hover {
     padding-inline: clamp(var(--space-5), 8vw, 9rem);
 }
 
-.site__main--contained .page {
-    max-width: var(--page-width, var(--content-width));
+    .site__main--contained .page {
+        max-width: var(--page-width, var(--content-width));
+    }
+
+/* Solo Explorar: margen lateral del contenido a la mitad del de Comparar y Provincia (la cabecera no cambia) */
+@media (min-width: 1025px) {
+    .site__main--contained.site__main--explore {
+        max-width: none;
+        padding-inline: clamp(12px, 4vw, 4.5rem);
+    }
+
+        .site__main--contained.site__main--explore .page {
+            max-width: none;
+        }
+}
+
+@media (min-width: 1641px) {
+    .site__main--contained.site__main--explore {
+        padding-inline: calc((100vw - 1640px) / 4 + min(4vw, 4.5rem));
+    }
 }
 
 /* Tabla de provincias compacta para que las once columnas quepan sin desplazamiento horizontal */

@@ -21,10 +21,10 @@ export function SupplyDemandChart({ records, sales }: { records: ConstructionRec
     return (
         <div className="chart" role="img" aria-label="Compraventas, viviendas iniciadas y viviendas terminadas por trimestre">
             <ResponsiveContainer width="100%" height={280}>
-                <LineChart data={data} margin={{ top: 8, right: 8, bottom: 0, left: -8 }}>
+                <LineChart data={data} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>
                     <CartesianGrid {...gridProps} />
                     <XAxis dataKey="label" {...axisProps} minTickGap={32} />
-                    <YAxis {...axisProps} tickFormatter={(value) => formatNumber(value)} />
+                    <YAxis {...axisProps} width={68} tickFormatter={(value) => formatNumber(value)} />
                     <Tooltip {...tooltipProps} formatter={(value) => formatNumber(Number(value))} />
                     {SERIES.map((name, index) => (
                         <Line

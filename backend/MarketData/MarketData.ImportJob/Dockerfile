@@ -1,5 +1,5 @@
 # Etapa de compilación: restaura paquetes (incluida la biblioteca compartida MarketData.Data) y publica en Release.
-FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+FROM mcr.microsoft.com/dotnet/sdk:11.0 AS build
 WORKDIR /src
 
 # Restore sobre los .csproj antes del código para reutilizar la capa de paquetes.

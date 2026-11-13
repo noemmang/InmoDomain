@@ -10,7 +10,7 @@ COPY backend/Property/ backend/Property/
 RUN dotnet publish backend/Property/Property.csproj -c Release -o /app/publish --no-restore -p:UseAppHost=false
 
 # Etapa final: runtime de ASP.NET Core con usuario no root.
-FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS final
+FROM mcr.microsoft.com/dotnet/aspnet:11.0 AS final
 WORKDIR /app
 COPY --from=build /app/publish .
 

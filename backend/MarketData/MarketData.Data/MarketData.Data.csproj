@@ -14,7 +14,7 @@
 			<PrivateAssets>all</PrivateAssets>
 		</PackageReference>
 		<PackageReference Include="Microsoft.Extensions.Configuration" Version="10.0.14" />
-		<PackageReference Include="Microsoft.Extensions.Configuration.UserSecrets" Version="10.0.14" />
+		<PackageReference Include="Microsoft.Extensions.Configuration.UserSecrets" Version="11.0.0" />
 		<PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.3" />
 	</ItemGroup>
 
